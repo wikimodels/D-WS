@@ -1,0 +1,8 @@
+{
+  "deploy": {
+    "project": "wikimodels-d-screener-85",
+    "exclude": ["**/node_modules"],
+    "include": [],
+    "entrypoint": "server.ts"
+  }
+}
