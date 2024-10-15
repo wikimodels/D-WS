@@ -38,7 +38,7 @@ export function collectKlineData(
   ws.on("message", function (message: any) {
     const data = JSON.parse(message.data);
     if (data.k.x == true) {
-      const kline = mapBiDataToKlineObj(data, coinExchange);
+      const kline = mapBiDataToKlineObj(data);
       checkAlertsList(kline);
     }
   });

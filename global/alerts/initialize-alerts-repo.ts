@@ -1,22 +1,23 @@
-import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
 import { Coin } from "../../models/shared/coin.ts";
 
-import { loadCSV } from "../../functions/utils/csv/load-csv.ts";
-import { mapDataToAlerts } from "./map-data-to-alerts.ts";
 import { KlineObj } from "../../models/shared/kline.ts";
 
 import { AlertsRepo } from "../../models/alerts/alerts-repo.ts";
 import { AlertObj } from "../../models/alerts/alert-obj.ts";
 import { sendTgKeyLevelBreakMessage } from "../../functions/tg/key-level-break/send-tg-key-level-break-msg.ts";
-import { addLinks } from "./add-links.ts";
-import { addCoinExchange } from "./add-coin-exchange.ts";
-import { ConsoleHandler } from "https://deno.land/std@0.195.0/log/handlers.ts";
+import { getAllAlertObjs } from "../../functions/kv-db/alerts-crud/get-all-alert-objs.ts";
+import { getCoinsRepo } from "../coins/coins-repo.ts";
 
 export let alertsRepo: AlertsRepo[] = [];
 
-export async function initializeAlertsRepo(coins: Coin[]) {
-  let alerts = await getAlertsList();
-  alerts = addCoinExchange(coins, alerts);
+export function getAlertsRepo() {
+  const repo = alertsRepo;
+  return repo;
+}
+export async function initializeAlertsRepo() {
+  const coins = getCoinsRepo();
+  const alerts = await getAllAlertObjs("Alerts");
+
   coins.forEach((c) => {
     alertsRepo.push({
       symbol: c.symbol,
@@ -41,11 +42,6 @@ export function checkAlertsList(kline: KlineObj) {
       a.activationTime = new Date().getTime();
       a.low = kline.low;
       a.high = kline.high;
-      a = addLinks(a);
-      if (a.symbol == "SHIB1000USDT") {
-        console.log("-------------------------");
-        console.log(a);
-      }
       triggeredAlerts.push(a);
     }
   });
@@ -58,15 +54,4 @@ export function checkAlertsList(kline: KlineObj) {
     console.log("Triggered Alerts: ", triggeredAlerts.length);
   }
   return triggeredAlerts;
-}
-
-export async function getAlertsList() {
-  try {
-    const data = await loadCSV("./alerts.csv");
-    const alerts = mapDataToAlerts(data);
-    return alerts;
-  } catch (e) {
-    console.log(e);
-  }
-  return [];
 }
