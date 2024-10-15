@@ -1,19 +1,22 @@
-import {
-  WebSocketClient,
-  StandardWebSocketClient,
-} from "https://deno.land/x/websocket@v0.1.4/mod.ts";
+// deno-lint-ignore-file no-explicit-any
 import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
-import { TF } from "../../models/shared/timeframes.ts";
-import { printOpenConnectionInfo } from "../../functions/utils/messages/print-open-conn-info.ts";
-import { Colors } from "../../models/shared/colors.ts";
-import { printRetryConnectionInfo } from "../../functions/utils/messages/print-retry-conn-info.ts";
+import Binance, { KlineInterval, parseRawWsMessage } from "npm:binance";
 import { printConnectionErrorInfo } from "../../functions/utils/messages/print-conn-error-info.ts";
 import { printConnectionRetriesOverInfo } from "../../functions/utils/messages/print-conn-retries-over-info.ts";
-import { Exchange } from "../../models/shared/exchange.ts";
-import { mapBiDataToKlineObj } from "./map-bi-data-to-kline-obj.ts";
+import { printOpenConnectionInfo } from "../../functions/utils/messages/print-open-conn-info.ts";
+import { printRetryConnectionInfo } from "../../functions/utils/messages/print-retry-conn-info.ts";
 import { checkAlertsList } from "../../global/alerts/initialize-alerts-repo.ts";
+import { Colors } from "../../models/shared/colors.ts";
+import { Exchange } from "../../models/shared/exchange.ts";
+import { TF } from "../../models/shared/timeframes.ts";
+import { mapBiDataToKlineObj } from "./map-bi-data-to-kline-obj.ts";
 
 const env = await load();
+
+const logger = {
+  ...Binance.DefaultLogger,
+  silly: () => {},
+};
 
 export function collectKlineData(
   symbol: string,
@@ -25,30 +28,52 @@ export function collectKlineData(
   const exchange = "BINANCE";
   const connectionType = "KLINE-" + timeframe;
 
-  //const url = env["BINANCE_FS_WS"];
-  const url =
-    "wss://stream.binance.com:9443/ws/" +
-    `${symbol.toLowerCase()}@kline_${timeframe}`;
+  const ws = new Binance.WebsocketClient(
+    {
+      api_key: env["BINANCE_API_KEY"],
+      api_secret: env["BINANCE_SECRET_KEY"],
+      beautify: true,
+    },
+    logger
+  );
 
-  const ws: WebSocketClient = new StandardWebSocketClient(url);
-  ws.on("open", function () {
+  ws.subscribeKlines(symbol, timeframe as KlineInterval, "usdm", true);
+
+  // notification when a connection is opened
+  ws.on("open", (data) => {
     printOpenConnectionInfo(exchange, symbol, connectionType, Colors.magenta);
   });
 
-  ws.on("message", function (message: any) {
-    const data = JSON.parse(message.data);
-    if (data.k.x == true) {
-      const kline = mapBiDataToKlineObj(data, coinExchange);
+  // receive raw events
+  ws.on("message", (data) => {
+    const kline = mapBiDataToKlineObj(data);
+    if (kline.final) {
       checkAlertsList(kline);
     }
   });
 
-  ws.on("ping", (data: Uint8Array) => {
-    console.log(`%c${exchange}:${symbol} liq ---> ping`, "color:green");
-    ws.send(data);
+  // receive formatted events with beautified keys. Any "known" floats stored in strings as parsed as floats.
+  ws.on("formattedMessage", (data) => {
+    //Do nothing here for now
   });
 
-  ws.on("error", function (error: any) {
+  // read response to command sent via WS stream (e.g LIST_SUBSCRIPTIONS)
+  ws.on("reply", (data) => {
+    console.log("log reply: ", JSON.stringify(data, null, 2));
+  });
+
+  // receive notification when a ws connection is reconnecting automatically
+  ws.on("reconnecting", (data) => {
+    console.log("ws automatically reconnecting.... ", data?.wsKey);
+  });
+
+  // receive notification that a reconnection completed successfully (e.g use REST to check for missing data)
+  ws.on("reconnected", (data) => {
+    console.log("ws has reconnected ", data?.wsKey);
+  });
+
+  // Recommended: receive error events (e.g. first reconnection failed)
+  ws.on("error", (error) => {
     printConnectionErrorInfo(exchange, symbol, connectionType, Colors.red);
     retryCount++;
     console.log(error);
@@ -64,12 +89,13 @@ export function collectKlineData(
     }
   });
 
-  ws.on("close", function () {
+  ws.on("close", (data) => {
     console.log(
       `%c${exchange}:${symbol} ${connectionType} --> closed...`,
       "color:red"
     );
     printRetryConnectionInfo(exchange, symbol, connectionType, Colors.yellow);
+    console.log(data);
     reconnectToWs(symbol, coinExchange, timeframe);
   });
 }

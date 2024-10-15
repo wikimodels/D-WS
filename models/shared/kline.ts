@@ -11,6 +11,7 @@ export interface KlineObj {
   close: number;
   baseVolume: number;
   quoteVolume: number;
+  final?: boolean;
 }
 
 export interface KlineData {

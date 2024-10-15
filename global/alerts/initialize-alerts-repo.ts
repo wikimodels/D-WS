@@ -10,6 +10,7 @@ import { AlertObj } from "../../models/alerts/alert-obj.ts";
 import { sendTgKeyLevelBreakMessage } from "../../functions/tg/key-level-break/send-tg-key-level-break-msg.ts";
 import { addLinks } from "./add-links.ts";
 import { addCoinExchange } from "./add-coin-exchange.ts";
+import { ConsoleHandler } from "https://deno.land/std@0.195.0/log/handlers.ts";
 
 export let alertsRepo: AlertsRepo[] = [];
 
@@ -41,6 +42,10 @@ export function checkAlertsList(kline: KlineObj) {
       a.low = kline.low;
       a.high = kline.high;
       a = addLinks(a);
+      if (a.symbol == "SHIB1000USDT") {
+        console.log("-------------------------");
+        console.log(a);
+      }
       triggeredAlerts.push(a);
     }
   });
