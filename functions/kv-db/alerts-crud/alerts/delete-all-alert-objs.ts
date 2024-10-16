@@ -1,8 +1,10 @@
-export async function deleteAllAlertObjs(prefix: string) {
+import { SpaceNames } from "../../../../models/shared/space-names.ts";
+
+export async function deleteAllAlertObjs() {
   try {
     let counter = 0;
     const kv = await Deno.openKv();
-    const prefixKey = [prefix];
+    const prefixKey = [SpaceNames.Alerts];
     const iter = kv.list({ prefix: prefixKey });
     for await (const entry of iter) {
       await kv.delete(entry.key);

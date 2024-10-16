@@ -5,8 +5,9 @@ import { KlineObj } from "../../models/shared/kline.ts";
 import { AlertsRepo } from "../../models/alerts/alerts-repo.ts";
 import { AlertObj } from "../../models/alerts/alert-obj.ts";
 import { sendTgKeyLevelBreakMessage } from "../../functions/tg/key-level-break/send-tg-key-level-break-msg.ts";
-import { getAllAlertObjs } from "../../functions/kv-db/alerts-crud/get-all-alert-objs.ts";
+import { getAllAlertObjs } from "../../functions/kv-db/alerts-crud/alerts/get-all-alert-objs.ts";
 import { getCoinsRepo } from "../coins/coins-repo.ts";
+import { saveTriggeredAlertObj } from "../../functions/kv-db/alerts-crud/triggered-alerts/save-triggered-alert-obj.ts";
 
 export let alertsRepo: AlertsRepo[] = [];
 
@@ -16,7 +17,7 @@ export function getAlertsRepo() {
 }
 export async function initializeAlertsRepo() {
   const coins = getCoinsRepo();
-  const alerts = await getAllAlertObjs("Alerts");
+  const alerts = await getAllAlertObjs();
 
   coins.forEach((c) => {
     alertsRepo.push({
@@ -48,10 +49,12 @@ export function checkAlertsList(kline: KlineObj) {
 
   if (triggeredAlerts.length > 0) {
     triggeredAlerts.forEach(async (a) => {
-      await sendTgKeyLevelBreakMessage(a);
+      if (a.isActive) {
+        await sendTgKeyLevelBreakMessage(a);
+        await saveTriggeredAlertObj(a);
+      }
     });
 
     console.log("Triggered Alerts: ", triggeredAlerts.length);
   }
-  return triggeredAlerts;
 }

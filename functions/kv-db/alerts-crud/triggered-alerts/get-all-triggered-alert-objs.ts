@@ -1,7 +1,9 @@
-import { AlertObj } from "../../../models/alerts/alert-obj.ts";
+import { AlertObj } from "../../../../models/alerts/alert-obj.ts";
+import { SpaceNames } from "../../../../models/shared/space-names.ts";
 
-export async function getAllAlertObjs(prefix: string) {
+export async function getAllTriggeredAlertObjs() {
   try {
+    const prefix = SpaceNames.TriggeredAlerts;
     const objs: AlertObj[] = [];
     const kv = await Deno.openKv();
 
@@ -12,8 +14,8 @@ export async function getAllAlertObjs(prefix: string) {
       objs.push(entry.value as AlertObj);
     }
 
-    await kv.close(); // Close the KV connection
-    return objs; // Return the list of objects
+    await kv.close();
+    return objs;
   } catch (e) {
     console.log(e);
   }

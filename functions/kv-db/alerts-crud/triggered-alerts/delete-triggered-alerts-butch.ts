@@ -1,9 +1,11 @@
-export async function deleteAlertsButch(ids: string[]) {
+import { SpaceNames } from "../../../../models/shared/space-names.ts";
+
+export async function deleteTriggeredAlertsButch(ids: string[]) {
   try {
     const kv = await Deno.openKv();
     let counter = 0;
     for (const id in ids) {
-      await kv.delete(["Alerts", id]);
+      await kv.delete([SpaceNames.TriggeredAlerts, id]);
       counter++;
     }
 
