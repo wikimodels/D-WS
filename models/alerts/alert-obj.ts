@@ -17,6 +17,7 @@ export interface AlertObj {
   mainImgUrl?: string;
   imgUrls?: string[];
   isActive: boolean;
+  isTv?: boolean;
   tvLink?: string;
   cgLink?: string;
   exchBiLink?: string;

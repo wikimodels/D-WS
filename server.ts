@@ -32,11 +32,16 @@ import { getAllArchivedAlertObjs } from "./functions/kv-db/alerts-crud/archived-
 import { createArchivedAlertObj } from "./functions/kv-db/alerts-crud/archived-alerts/create-archived-alert-obj.ts";
 import { deleteArchivedAlertsButch } from "./functions/kv-db/alerts-crud/archived-alerts/delete-archived-alerts-butch.ts";
 import { deleteAllArchivedAlertObjs } from "./functions/kv-db/alerts-crud/archived-alerts/delete-all-archived-alert-objs.ts";
+import { getAlertByKeyLevelName } from "./functions/kv-db/alerts-crud/alerts/get-alert-by-key-level-name.ts";
+import { saveTriggeredAlertObj } from "./functions/kv-db/alerts-crud/triggered-alerts/save-triggered-alert-obj.ts";
+import { sendTgKeyLevelBreakMessage } from "./functions/tg/key-level-break/send-tg-key-level-break-msg.ts";
+import { Status } from "https://deno.land/std@0.92.0/http/http_status.ts";
 
 const env = await load();
 export const app = express();
 app.use(express.json());
-
+let lastAlertTimestamp = 0; // Store timestamp of the last processed request
+const cooldownTime = 20000; // Cooldown period in milliseconds (e.g., 10 seconds)
 const allowedOrigins = [env["ORIGIN_I"], env["ORIGIN_II"]];
 
 app.use(
@@ -61,6 +66,32 @@ app.get("/update-coins-repo", async (req: any, res: any) => {
 });
 
 //----------------------------------------
+// ✅ Tv TRIGGERED LERTS
+//----------------------------------------
+app.post("/create-triggered-tv-alert", async (req: any, res: any) => {
+  const currentTimestamp = Date.now();
+  const data: { keyLevelName: string; symbol: string } = req.body;
+  const alert = await getAlertByKeyLevelName(data);
+  if (currentTimestamp - lastAlertTimestamp > cooldownTime) {
+    lastAlertTimestamp = currentTimestamp; //
+    if (alert) {
+      alert.activationTime = new Date().getTime();
+      alert.activationTimeStr = UnixToTime(new Date().getTime());
+      console.log("TRIGGERED ALert", alert);
+      await saveTriggeredAlertObj(alert);
+      await sendTgKeyLevelBreakMessage(alert);
+      res.send(Status.OK);
+    }
+  } else {
+    // Ignore this request if it's within the cooldown period
+    console.log("Duplicate alert ignored.");
+    res.status(200).send("Duplicate alert ignored.");
+  }
+
+  res.send(Status.BadRequest);
+});
+
+//----------------------------------------
 // ✅ ALERTS
 //----------------------------------------
 app.post("/create-alert", async (req: any, res: any) => {
@@ -70,6 +101,7 @@ app.post("/create-alert", async (req: any, res: any) => {
   alert.id = crypto.randomUUID();
   alert.creationTime = new Date().getTime();
   alert.isActive = true;
+  alert.isTv = false;
   alert = addCoinExchange(coins, alert);
   alert = addLinks(alert);
   alert = addCoinCategory(coins, alert);

@@ -10,16 +10,22 @@ const bot = new TelegramBot(env["TG_DENO_WS_TECH"]);
 const emergencyBot = new TelegramBot(env["TG_EMERGENCY_BOT"]);
 export async function sendTgKeyLevelBreakMessage(alertObj: AlertObj) {
   try {
+    const defaultPicUrl = "https://www.tradingview.com/x/fXTOLlJL/";
+    const imgUrl =
+      alertObj.imgUrls?.length && alertObj.imgUrls.length > 0
+        ? alertObj.imgUrls[0]
+        : defaultPicUrl;
+
     await bot.sendPhoto({
       chat_id: env["TG_USER"],
-      photo: alertObj.mainImgUrl || "",
+      photo: imgUrl,
       parse_mode: "html",
       caption: formatKeyLevelBreakMsg(alertObj),
     });
   } catch (error) {
     await emergencyBot.sendMessage({
       chat_id: env["TG_USER"],
-      text: getGeneralErrorMessage("Deno WS Technicals Bot: " + error.message),
+      text: getGeneralErrorMessage("Deno WS Technicals Bot: " + error),
       parse_mode: "html",
     });
     console.error(`Deno WS Technicals Bot:`, error);
