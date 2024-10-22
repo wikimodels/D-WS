@@ -1,8 +1,3 @@
- 
-
-denon run --allow-net --allow-read --allow-env --allow-write --unstable-kv --allow-sys --unstable-cron ./server.ts
-
-
 Worknig with this package
 https://www.npmjs.com/package/binance
 

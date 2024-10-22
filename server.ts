@@ -12,11 +12,9 @@ import {
 import { TF } from "./models/shared/timeframes.ts";
 import { AlertObj } from "./models/alerts/alert-obj.ts";
 import { deleteAllAlertObjs } from "./functions/kv-db/alerts-crud/alerts/delete-all-alert-objs.ts";
-import { saveAlertObj } from "./functions/kv-db/alerts-crud/alerts/save-alert-obj.ts";
+import { createAlertObj } from "./functions/kv-db/alerts-crud/alerts/create-alert-obj.ts";
 import { getAllAlertObjs } from "./functions/kv-db/alerts-crud/alerts/get-all-alert-objs.ts";
-import { getAlertObjById } from "./functions/kv-db/alerts-crud/alerts/get-alert-obj-by-id.ts";
 import { updateAlertObj } from "./functions/kv-db/alerts-crud/alerts/update-alert-obj.ts";
-import { deleteAlertObj } from "./functions/kv-db/alerts-crud/alerts/delete-alert-obj.ts";
 import { deleteAlertsButch } from "./functions/kv-db/alerts-crud/alerts/delete-alerts-butch.ts";
 import { cronTaskUpdateAlertsRepo } from "./functions/cron-tasks/update-alerts-repo.ts";
 import { addCoinExchange } from "./global/coins/add-coin-exchange.ts";
@@ -28,6 +26,12 @@ import {
 import { addCoinCategory } from "./global/coins/add-coin-category.ts";
 import { deleteAllTriggeredAlertObjs } from "./functions/kv-db/alerts-crud/triggered-alerts/delete-all-triggered-alert-objs%20copy.ts";
 import { deleteTriggeredAlertsButch } from "./functions/kv-db/alerts-crud/triggered-alerts/delete-triggered-alerts-butch.ts";
+import { UnixToTime } from "./functions/utils/time-converter.ts";
+import { createAlertButch } from "./functions/kv-db/alerts-crud/alerts/create-alert-butch.ts";
+import { getAllArchivedAlertObjs } from "./functions/kv-db/alerts-crud/archived-alerts/get-all-archived-alert-objs.ts";
+import { createArchivedAlertObj } from "./functions/kv-db/alerts-crud/archived-alerts/create-archived-alert-obj.ts";
+import { deleteArchivedAlertsButch } from "./functions/kv-db/alerts-crud/archived-alerts/delete-archived-alerts-butch.ts";
+import { deleteAllArchivedAlertObjs } from "./functions/kv-db/alerts-crud/archived-alerts/delete-all-archived-alert-objs.ts";
 
 const env = await load();
 export const app = express();
@@ -41,39 +45,50 @@ app.use(
   })
 );
 
-app.post("/create-alert", async (req: any, res: any) => {
+app.get("/get-all-coins", (req: any, res: any) => {
   const coins = getCoinsRepo();
-  let alert: AlertObj = req.body;
-
-  alert.id = crypto.randomUUID();
-  alert.creationTime = new Date().getTime();
-  alert = addCoinExchange(coins, alert);
-  alert = addLinks(alert);
-  alert = addCoinCategory(coins, alert);
-
-  await saveAlertObj(alert);
-  res.send(alert);
-});
-
-app.get("/get-all-alerts", async (req: any, res: any) => {
-  const _res = await getAllAlertObjs();
-  res.send(_res);
-});
-
-app.get("/get-all-triggered-alerts", async (req: any, res: any) => {
-  const _res = await getAllAlertObjs();
-  res.send(_res);
-});
-
-app.post("/get-alert-by-id", async (req: any, res: any) => {
-  const id = req.body.id;
-  const _res = await getAlertObjById(id);
-  res.send(_res);
+  res.send(coins);
 });
 
 app.get("/get-alerts-repo", (req: any, res: any) => {
   const repo = getAlertsRepo();
   res.send(repo);
+});
+
+app.get("/update-coins-repo", async (req: any, res: any) => {
+  await initializeCoinsRepo();
+  res.send("OK");
+});
+
+//----------------------------------------
+// ✅ ALERTS
+//----------------------------------------
+app.post("/create-alert", async (req: any, res: any) => {
+  const coins = getCoinsRepo();
+  let alert: AlertObj = req.body;
+  console.log(alert);
+  alert.id = crypto.randomUUID();
+  alert.creationTime = new Date().getTime();
+  alert.isActive = true;
+  alert = addCoinExchange(coins, alert);
+  alert = addLinks(alert);
+  alert = addCoinCategory(coins, alert);
+  alert.activationTimeStr = UnixToTime(new Date().getTime());
+
+  const response = await createAlertObj(alert);
+  res.send(response);
+});
+
+app.post("/create-alert-butch", async (req: any, res: any) => {
+  const coins = getCoinsRepo();
+  const alerts: AlertObj[] = req.body;
+  const response = await createAlertButch(alerts, coins);
+  res.send(response);
+});
+
+app.get("/get-all-alerts", async (req: any, res: any) => {
+  const _res = await getAllAlertObjs();
+  res.send(_res);
 });
 
 app.post("/update-alert", async (req: any, res: any) => {
@@ -82,30 +97,24 @@ app.post("/update-alert", async (req: any, res: any) => {
   res.send(_res);
 });
 
-app.get("/update-coins-repo", async (req: any, res: any) => {
-  await initializeCoinsRepo();
-  res.send("OK");
-});
-
-app.post("/delete-alert-by-id", async (req: any, res: any) => {
-  const id = req.body.id;
-  const _res = await deleteAlertObj(id);
-  res.send(_res);
-});
-
 app.get("/delete-all-alerts", async (req: any, res: any) => {
-  const _res = await deleteAllAlertObjs("Alerts");
-  res.send(_res);
-});
-
-app.get("/delete-all-triggered-alerts", async (req: any, res: any) => {
-  const _res = await deleteAllTriggeredAlertObjs();
+  const _res = await deleteAllAlertObjs();
   res.send(_res);
 });
 
 app.post("/delete-alerts-butch", async (req: any, res: any) => {
   const ids: string[] = req.body;
+  //TODO:
+  console.log(ids);
   const _res = await deleteAlertsButch(ids);
+  res.send(_res);
+});
+
+//----------------------------------------
+// ✅ TRIGGERED ALERTS
+//----------------------------------------
+app.get("/get-all-triggered-alerts", async (req: any, res: any) => {
+  const _res = await getAllAlertObjs();
   res.send(_res);
 });
 
@@ -115,12 +124,44 @@ app.post("/delete-triggered-alerts-butch", async (req: any, res: any) => {
   res.send(_res);
 });
 
+app.get("/delete-all-triggered-alerts", async (req: any, res: any) => {
+  const _res = await deleteAllTriggeredAlertObjs();
+  res.send(_res);
+});
+
+//----------------------------------------
+// ✅ ARCHIVED ALERTS
+//----------------------------------------
+app.get("/get-all-archived-alerts", async (req: any, res: any) => {
+  const _res = await getAllArchivedAlertObjs();
+  res.send(_res);
+});
+
+app.post("/create-archived-alert", async (req: any, res: any) => {
+  const alert: AlertObj = req.body;
+  const response = await createArchivedAlertObj(alert);
+  res.send(response);
+});
+
+app.post("/delete-archived-alerts-butch", async (req: any, res: any) => {
+  const ids: string[] = req.body;
+  const _res = await deleteArchivedAlertsButch(ids);
+  res.send(_res);
+});
+
+app.get("/delete-all-archived-alerts", async (req: any, res: any) => {
+  const _res = await deleteAllArchivedAlertObjs();
+  res.send(_res);
+});
+
+//--------------------------------------------------------------
+
 app.listen({ port: 80 }, async () => {
   await initializeCoinsRepo();
 
   const timeframe = TF.m1;
   console.log("%cServer ---> running...", DColors.green);
-  runWsMain(timeframe);
+  //runWsMain(timeframe);
   initializeAlertsRepo();
   cronTaskUpdateAlertsRepo();
 });

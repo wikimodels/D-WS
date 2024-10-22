@@ -5,6 +5,7 @@ export function UnixToISO(unixTimestamp: number) {
   const formattedTime = time.format("YYYY-MM-ddTHH:mm:ss.SZ");
   return formattedTime;
 }
+
 export function UnixToTime(unixTimestamp: number) {
   const time = datetime(unixTimestamp);
   const formattedTime = time.format("YYYY-MM-dd HH:mm:ss");

@@ -2,6 +2,9 @@ import { AlertObj } from "../../models/alerts/alert-obj.ts";
 import { Exchange } from "../../models/shared/exchange.ts";
 
 export function addLinks(alertObj: AlertObj) {
+  alertObj.logoLink = `assets/logo/${alertObj.symbol
+    .replace("USDT", "")
+    .toLowerCase()}.svg`;
   alertObj.tvLink =
     alertObj.coinExchange == Exchange.By ||
     alertObj.coinExchange == Exchange.BiBy

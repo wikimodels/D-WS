@@ -10,6 +10,7 @@ export interface AlertObj {
   description?: string;
   creationTime?: number;
   activationTime?: number;
+  activationTimeStr?: string;
   price: number;
   high: number;
   low: number;
@@ -20,4 +21,5 @@ export interface AlertObj {
   cgLink?: string;
   exchBiLink?: string;
   exchByLink?: string;
+  logoLink?: string;
 }

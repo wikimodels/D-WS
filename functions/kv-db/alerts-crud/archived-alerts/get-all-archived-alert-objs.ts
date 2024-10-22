@@ -3,12 +3,12 @@ import _ from "https://cdn.skypack.dev/lodash";
 import { AlertObj } from "../../../../models/alerts/alert-obj.ts";
 import { SpaceNames } from "../../../../models/shared/space-names.ts";
 
-export async function getAllAlertObjs() {
+export async function getAllArchivedAlertObjs() {
   try {
     let objs: AlertObj[] = [];
     const kv = await Deno.openKv();
 
-    const prefixKey = [SpaceNames.Alerts];
+    const prefixKey = [SpaceNames.ArchivedAlerts];
     const iter = kv.list({ prefix: prefixKey });
 
     for await (const entry of iter) {
