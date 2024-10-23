@@ -10,6 +10,7 @@ import { Colors } from "../../models/shared/colors.ts";
 import { Exchange } from "../../models/shared/exchange.ts";
 import { TF } from "../../models/shared/timeframes.ts";
 import { mapBiDataToKlineObj } from "./map-bi-data-to-kline-obj.ts";
+import { addToKlineRepo } from "../../global/kline/kline-repo.ts";
 
 const env = await load();
 
@@ -48,7 +49,7 @@ export function collectKlineData(
   ws.on("message", (data) => {
     const kline = mapBiDataToKlineObj(data);
     if (kline.final) {
-      checkAlertsList(kline);
+      addToKlineRepo(kline);
     }
   });
 

@@ -5,7 +5,8 @@ export async function deleteAlertsButch(ids: string[]) {
     const kv = await Deno.openKv();
     let counter = 0;
     for (const id of ids) {
-      await kv.delete([SpaceNames.Alerts, id]);
+      const res = await kv.delete([SpaceNames.Alerts, id]);
+      console.log(res);
 
       counter++;
     }

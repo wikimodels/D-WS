@@ -12,6 +12,7 @@ import { printConnectionRetriesOverInfo } from "../../functions/utils/messages/p
 import { mapByDataToKlineObj } from "./map-by-data-to-kline-obj.ts";
 import { Exchange } from "../../models/shared/exchange.ts";
 import { checkAlertsList } from "../../global/alerts/initialize-alerts-repo.ts";
+import { addToKlineRepo } from "../../global/kline/kline-repo.ts";
 
 const env = await load();
 
@@ -42,7 +43,7 @@ export function collectKlineData(
 
     if (data.type && data.type == "snapshot" && data.data[0].confirm == true) {
       const kline = mapByDataToKlineObj(data, coinExchange, symbol);
-      checkAlertsList(kline);
+      addToKlineRepo(kline);
     }
   });
 

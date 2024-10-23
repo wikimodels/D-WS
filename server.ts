@@ -36,11 +36,12 @@ import { getAlertByKeyLevelName } from "./functions/kv-db/alerts-crud/alerts/get
 import { saveTriggeredAlertObj } from "./functions/kv-db/alerts-crud/triggered-alerts/save-triggered-alert-obj.ts";
 import { sendTgKeyLevelBreakMessage } from "./functions/tg/key-level-break/send-tg-key-level-break-msg.ts";
 import { Status } from "https://deno.land/std@0.92.0/http/http_status.ts";
+import { getAllTriggeredAlertObjs } from "./functions/kv-db/alerts-crud/triggered-alerts/get-all-triggered-alert-objs.ts";
 
 const env = await load();
 export const app = express();
 app.use(express.json());
-let lastAlertTimestamp = 0; // Store timestamp of the last processed request
+const lastAlertTimestamps: { [key: string]: number } = {}; // Store timestamp of the last processed request
 const cooldownTime = 20000; // Cooldown period in milliseconds (e.g., 10 seconds)
 const allowedOrigins = [env["ORIGIN_I"], env["ORIGIN_II"]];
 
@@ -71,16 +72,22 @@ app.get("/update-coins-repo", async (req: any, res: any) => {
 app.post("/create-triggered-tv-alert", async (req: any, res: any) => {
   const currentTimestamp = Date.now();
   const data: { keyLevelName: string; symbol: string } = req.body;
+  const symbol = data.symbol || "unknown";
   const alert = await getAlertByKeyLevelName(data);
-  if (currentTimestamp - lastAlertTimestamp > cooldownTime) {
-    lastAlertTimestamp = currentTimestamp; //
+  if (
+    !lastAlertTimestamps[symbol] ||
+    currentTimestamp - lastAlertTimestamps[symbol] > cooldownTime
+  ) {
+    // Update the last processed timestamp for this symbol
+    lastAlertTimestamps[symbol] = currentTimestamp;
     if (alert) {
       alert.activationTime = new Date().getTime();
       alert.activationTimeStr = UnixToTime(new Date().getTime());
       console.log("TRIGGERED ALert", alert);
       await saveTriggeredAlertObj(alert);
       await sendTgKeyLevelBreakMessage(alert);
-      res.send(Status.OK);
+      // Assuming you're using Status.OK from an external library
+      res.status(200).send("Alert processed successfully.");
     }
   } else {
     // Ignore this request if it's within the cooldown period
@@ -88,7 +95,7 @@ app.post("/create-triggered-tv-alert", async (req: any, res: any) => {
     res.status(200).send("Duplicate alert ignored.");
   }
 
-  res.send(Status.BadRequest);
+  res.sendStatus(Status.BadRequest);
 });
 
 //----------------------------------------
@@ -146,12 +153,14 @@ app.post("/delete-alerts-butch", async (req: any, res: any) => {
 // ✅ TRIGGERED ALERTS
 //----------------------------------------
 app.get("/get-all-triggered-alerts", async (req: any, res: any) => {
-  const _res = await getAllAlertObjs();
+  const _res = await getAllTriggeredAlertObjs();
   res.send(_res);
 });
 
 app.post("/delete-triggered-alerts-butch", async (req: any, res: any) => {
   const ids: string[] = req.body;
+  //TODO:
+  console.log("delete-triggered-alerts-butch ========>", ids);
   const _res = await deleteTriggeredAlertsButch(ids);
   res.send(_res);
 });
@@ -186,14 +195,16 @@ app.get("/delete-all-archived-alerts", async (req: any, res: any) => {
   res.send(_res);
 });
 
-//--------------------------------------------------------------
+//----------------------------------------
+// ✅ INFRUSTRUCTURE
+//----------------------------------------
 
-app.listen({ port: 80 }, async () => {
+app.listen({ port: 80 }, "0.0.0.0", async () => {
   await initializeCoinsRepo();
 
   const timeframe = TF.m1;
   console.log("%cServer ---> running...", DColors.green);
-  //runWsMain(timeframe);
+  runWsMain(timeframe);
   initializeAlertsRepo();
   cronTaskUpdateAlertsRepo();
 });

@@ -13,9 +13,7 @@ export async function deleteAllTriggeredAlertObjs() {
     }
     await kv.close(); // Close the KV connection
 
-    const msg = `${prefix}: deleted ${counter} object(s)`;
-    console.log(msg);
-    return msg;
+    return { deleted: 1 };
   } catch (e) {
     console.log(e);
   }
