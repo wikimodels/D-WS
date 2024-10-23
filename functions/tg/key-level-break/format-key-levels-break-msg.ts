@@ -1,21 +1,23 @@
 import { AlertObj } from "../../../models/alerts/alert-obj.ts";
 import { UnixToNamedTimeRu } from "../../utils/time-converter.ts";
 
-export function formatKeyLevelBreakMsg(alertObj: AlertObj) {
-  const msg = getMessage(alertObj);
-  const footer = getFooter(alertObj);
-  const timeline = getTimeline(alertObj);
-  const res = `${msg}
-${footer}
-${timeline}`;
-  return res;
+export function formatKeyLevelsBreakMsg(alertObjs: AlertObj[]) {
+  const msg = getMessage(alertObjs);
+  //   const footer = getFooter(alertObjs);
+  //   const timeline = getTimeline(alertObjs);
+  //   const res = `${msg}
+  // ${footer}
+  // ${timeline}`;
+  return msg;
 }
 
-function getMessage(alertObj: AlertObj) {
-  const msg = `<b><a href = "${alertObj.tvLink}">${alertObj.symbol}</a>: ${alertObj.keyLevelName}</b>
-${alertObj.action}
-<i>${alertObj.description}</i>`;
-
+function getMessage(alertObjs: AlertObj[]) {
+  let msg = "";
+  alertObjs.forEach((a) => {
+    msg =
+      msg +
+      `<b><a href = "${a.tvLink}">${a.symbol}</a>: ${a.keyLevelName}</b> high: ${a.high} low: ${a.low} price: ${a.price}\n`;
+  });
   return msg;
 }
 

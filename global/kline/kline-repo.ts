@@ -10,5 +10,7 @@ export function KlineRepo() {
   return klineRepo;
 }
 export function emptyKlineRepo() {
+  console.log("KlineRepo before cleaning: ", klineRepo.length);
   klineRepo = [];
+  console.log("KlineRepo after cleaning: ", klineRepo.length);
 }
