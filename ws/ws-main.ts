@@ -5,10 +5,10 @@ import { byMain } from "./bybit/by-main.ts";
 
 export async function runWsMain(timeframe: TF) {
   const coins = getCoinsRepo();
-  const biCoins = coins.filter(
-    (c) => c.exchange == "bi" || c.exchange == "biby"
+  const biCoins = coins.filter((c) => c.exchange == "bi");
+  const byCoins = coins.filter(
+    (c) => c.exchange == "by" || c.exchange == "biby"
   );
-  const byCoins = coins.filter((c) => c.exchange == "by");
 
   //TODO: COMMENTED OUT biMain()
   biMain(biCoins, timeframe);
