@@ -1,3 +1,4 @@
+import { logKlineRepoState } from "../../functions/kv-db/ws-health/log-kline-repo-state.ts";
 import type { KlineObj } from "../../models/shared/kline.ts";
 
 let klineRepo: KlineObj[] = [];
@@ -9,7 +10,9 @@ export function addToKlineRepo(klineObj: KlineObj) {
 export function KlineRepo() {
   return klineRepo;
 }
-export function emptyKlineRepo() {
+
+export async function emptyKlineRepo() {
+  await logKlineRepoState(klineRepo.length);
   console.log("KlineRepo before cleaning: ", klineRepo.length);
   klineRepo = [];
   console.log("KlineRepo after cleaning: ", klineRepo.length);

@@ -37,6 +37,8 @@ import { saveTriggeredAlertObj } from "./functions/kv-db/alerts-crud/triggered-a
 import { sendTgKeyLevelBreakMessage } from "./functions/tg/key-level-break/send-tg-key-level-break-msg.ts";
 import { Status } from "https://deno.land/std@0.92.0/http/http_status.ts";
 import { getAllTriggeredAlertObjs } from "./functions/kv-db/alerts-crud/triggered-alerts/get-all-triggered-alert-objs.ts";
+import { getKlineRepoStateLog } from "./functions/kv-db/ws-health/get-kline-repo-state-log.ts";
+import { cleanKlineRepoStateLog } from "./functions/kv-db/ws-health/clean-kline-repo-state-log.ts";
 
 const env = await load();
 export const app = express();
@@ -192,6 +194,19 @@ app.post("/delete-archived-alerts-butch", async (req: any, res: any) => {
 
 app.get("/delete-all-archived-alerts", async (req: any, res: any) => {
   const _res = await deleteAllArchivedAlertObjs();
+  res.send(_res);
+});
+
+//----------------------------------------
+// ✅ UTILS
+//----------------------------------------
+app.get("/get-kline-repo-state-log", async (req: any, res: any) => {
+  const _res = await getKlineRepoStateLog();
+  res.send(_res);
+});
+
+app.get("/clean-kline-repo-state-log", async (req: any, res: any) => {
+  const _res = await cleanKlineRepoStateLog();
   res.send(_res);
 });
 

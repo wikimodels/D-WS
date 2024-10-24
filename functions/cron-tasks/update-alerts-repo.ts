@@ -25,7 +25,12 @@ export async function checkAlerts() {
   const triggeredAlerts: AlertObj[] = [];
   alerts.forEach((a) => {
     KlineRepo().forEach((r) => {
-      if (a.symbol == r.symbol && a.price > r.low && a.price < r.high) {
+      if (
+        a.isActive &&
+        a.symbol == r.symbol &&
+        a.price > r.low &&
+        a.price < r.high
+      ) {
         a.high = r.high;
         a.low = r.low;
         triggeredAlerts.push(a);
