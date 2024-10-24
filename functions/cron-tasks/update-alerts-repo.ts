@@ -1,4 +1,4 @@
-import { initializeAlertsRepo } from "../../global/alerts/initialize-alerts-repo.ts";
+import { _ } from "https://cdn.skypack.dev/-/lodash@v4.17.21-K6GEbP02mWFnLA45zAmi/dist=es2019,mode=imports/optimized/lodash.js";
 import { emptyKlineRepo } from "../../global/kline/kline-repo.ts";
 import { KlineRepo } from "../../global/kline/kline-repo.ts";
 import type { AlertObj } from "../../models/alerts/alert-obj.ts";
@@ -22,7 +22,7 @@ export function cronTaskUpdateAlertsRepo() {
 
 export async function checkAlerts() {
   const alerts = await getAllAlertObjs();
-  const triggeredAlerts: AlertObj[] = [];
+  let triggeredAlerts: AlertObj[] = [];
   alerts.forEach((a) => {
     KlineRepo().forEach((r) => {
       if (
@@ -37,5 +37,6 @@ export async function checkAlerts() {
       }
     });
   });
+  triggeredAlerts = _.uniqBy(triggeredAlerts, "keyLevelName");
   return triggeredAlerts;
 }
