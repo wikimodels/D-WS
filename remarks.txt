@@ -32,3 +32,7 @@ deployctl projects delete d-ws
 }
 
 BB showed perfect result! Keep in mind that the code has its percularities.
+
+-------- MONGODB --------------
+PAIN IN THE ASS WAS authMechanism=SCRAM-SHA-1!!!
+ "mongodb+srv://USERNAME:<PASSWORD>@cluster0.wgp2hmv.mongodb.net/?authMechanism=SCRAM-SHA-1&retryWrites=true&w=majority&appName=Cluster0"

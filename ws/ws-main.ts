@@ -11,6 +11,6 @@ export async function runWsMain(timeframe: TF) {
   );
 
   //TODO: COMMENTED OUT biMain()
-  biMain(biCoins, timeframe);
+  //biMain(biCoins, timeframe);
   byMain(byCoins, timeframe);
 }

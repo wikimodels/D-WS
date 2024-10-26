@@ -3,4 +3,5 @@ export enum SpaceNames {
   TriggeredAlerts = "TriggeredAlerts",
   ArchivedAlerts = "ArchivedAlerts",
   WsConnections = "WsConnections",
+  WorkingCoins = "WorkingCoins",
 }

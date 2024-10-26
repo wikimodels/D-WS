@@ -5,7 +5,6 @@ import { printConnectionErrorInfo } from "../../functions/utils/messages/print-c
 import { printConnectionRetriesOverInfo } from "../../functions/utils/messages/print-conn-retries-over-info.ts";
 import { printOpenConnectionInfo } from "../../functions/utils/messages/print-open-conn-info.ts";
 import { printRetryConnectionInfo } from "../../functions/utils/messages/print-retry-conn-info.ts";
-import { checkAlertsList } from "../../global/alerts/initialize-alerts-repo.ts";
 import { Colors } from "../../models/shared/colors.ts";
 import { Exchange } from "../../models/shared/exchange.ts";
 import { TF } from "../../models/shared/timeframes.ts";

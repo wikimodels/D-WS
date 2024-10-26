@@ -39,6 +39,12 @@ import { Status } from "https://deno.land/std@0.92.0/http/http_status.ts";
 import { getAllTriggeredAlertObjs } from "./functions/kv-db/alerts-crud/triggered-alerts/get-all-triggered-alert-objs.ts";
 import { getKlineRepoStateLog } from "./functions/kv-db/ws-health/get-kline-repo-state-log.ts";
 import { cleanKlineRepoStateLog } from "./functions/kv-db/ws-health/clean-kline-repo-state-log.ts";
+import { getAllWorkingCoins } from "./functions/kv-db/working-coins/get-all-working-coins.ts";
+import { deleteAllWorkingCoins } from "./functions/kv-db/working-coins/delete-all-working-coins.ts";
+import type { Coin } from "./models/shared/coin.ts";
+import { addWorkingCoins } from "./functions/kv-db/working-coins/add-working-coins.ts";
+import { deleteWorkingCoinsButch } from "./functions/kv-db/working-coins/delete-working-coins-butch.ts";
+import { initializeMongoDb } from "./global/mongodb/initialize-mongodb.ts";
 
 const env = await load();
 export const app = express();
@@ -198,6 +204,31 @@ app.get("/delete-all-archived-alerts", async (req: any, res: any) => {
 });
 
 //----------------------------------------
+// ✅ WORKING COINS
+//----------------------------------------
+app.get("/get-all-working-coins", async (req: any, res: any) => {
+  const _res = await getAllWorkingCoins();
+  res.send(_res);
+});
+
+app.get("/delete-all-working-coins", async (req: any, res: any) => {
+  const response = await deleteAllWorkingCoins();
+  res.send(response);
+});
+
+app.post("/add-working-coins", async (req: any, res: any) => {
+  const coins: Coin[] = req.body;
+  const _res = await addWorkingCoins(coins);
+  res.send(_res);
+});
+
+app.post("/delete-working-coins-butch", async (req: any, res: any) => {
+  const coins: Coin[] = req.body;
+  const _res = await deleteWorkingCoinsButch(coins);
+  res.send(_res);
+});
+
+//----------------------------------------
 // ✅ UTILS
 //----------------------------------------
 app.get("/get-kline-repo-state-log", async (req: any, res: any) => {
@@ -216,7 +247,6 @@ app.get("/clean-kline-repo-state-log", async (req: any, res: any) => {
 
 app.listen({ port: 80 }, "0.0.0.0", async () => {
   await initializeCoinsRepo();
-
   const timeframe = TF.m1;
   console.log("%cServer ---> running...", DColors.green);
   runWsMain(timeframe);
