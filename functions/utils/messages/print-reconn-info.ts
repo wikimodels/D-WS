@@ -1,4 +1,4 @@
-export function printRetryConnectionInfo(
+export function printReconnectingInfo(
   exchange: string,
   symbol: string,
   connectionType: string,
@@ -9,9 +9,9 @@ export function printRetryConnectionInfo(
       exchange +
       ":" +
       symbol +
-      ":" +
+      " " +
       connectionType +
-      " --> retry to connect...",
+      " --> reconnecting...",
     `color:${color}`
   );
 }

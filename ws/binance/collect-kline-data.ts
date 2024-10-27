@@ -1,10 +1,10 @@
 // deno-lint-ignore-file no-explicit-any
 import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
-import Binance, { KlineInterval, parseRawWsMessage } from "npm:binance";
+import Binance, { KlineInterval } from "npm:binance";
 import { printConnectionErrorInfo } from "../../functions/utils/messages/print-conn-error-info.ts";
 import { printConnectionRetriesOverInfo } from "../../functions/utils/messages/print-conn-retries-over-info.ts";
 import { printOpenConnectionInfo } from "../../functions/utils/messages/print-open-conn-info.ts";
-import { printRetryConnectionInfo } from "../../functions/utils/messages/print-retry-conn-info.ts";
+import { printRetryConnectionInfo } from "../../functions/utils/messages/print-retrying-conn-info.ts";
 import { Colors } from "../../models/shared/colors.ts";
 import { Exchange } from "../../models/shared/exchange.ts";
 import { TF } from "../../models/shared/timeframes.ts";
@@ -74,7 +74,13 @@ export function collectKlineData(
 
   // Recommended: receive error events (e.g. first reconnection failed)
   ws.on("error", (error) => {
-    printConnectionErrorInfo(exchange, symbol, connectionType, Colors.red);
+    printConnectionErrorInfo(
+      exchange,
+      symbol,
+      connectionType,
+      Colors.red,
+      error
+    );
     retryCount++;
     console.log(error);
     if (retryCount == maxRetries) {

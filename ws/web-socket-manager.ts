@@ -5,7 +5,7 @@ import { env } from "process";
 import { printConnectionErrorInfo } from "../functions/utils/messages/print-conn-error-info.ts";
 import { printConnectionRetriesOverInfo } from "../functions/utils/messages/print-conn-retries-over-info.ts";
 import { printOpenConnectionInfo } from "../functions/utils/messages/print-open-conn-info.ts";
-import { printRetryConnectionInfo } from "../functions/utils/messages/print-retry-conn-info.ts";
+import { printRetryConnectionInfo } from "../functions/utils/messages/print-retrying-conn-info.ts";
 import { addToKlineRepo } from "../global/kline/kline-repo.ts";
 import { Colors } from "../models/shared/colors.ts";
 import type { Exchange } from "../models/shared/exchange.ts";

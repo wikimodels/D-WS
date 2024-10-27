@@ -1,13 +1,12 @@
 import { Coin } from "../../models/shared/coin.ts";
+import type { ConnObj } from "../../models/shared/conn-obj.ts";
 import { UnixToNamedTimeRu } from "../utils/time-converter.ts";
 
-export function getWsErrorMessage(
-  symbol: string,
-  exchange: string,
-  errorMsg: string
-) {
+export function getWsErrorMessage(connObj: ConnObj, errorMsg: string) {
   const msg = `
-  <b>🆘 ${exchange}:${symbol}- WS ERROR</b>
+  <b>🆘 ${connObj.projectName}:${connObj.exchange}:${
+    connObj.symbol
+  } - WS ERROR</b>
 <i>${errorMsg}</i>      
 <i>⏰ ${UnixToNamedTimeRu(new Date().getTime())}</i>   
 <i>&#160&#160&#160</i>`;

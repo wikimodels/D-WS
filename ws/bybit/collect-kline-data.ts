@@ -6,7 +6,7 @@ import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
 import { TF } from "../../models/shared/timeframes.ts";
 import { printOpenConnectionInfo } from "../../functions/utils/messages/print-open-conn-info.ts";
 import { Colors } from "../../models/shared/colors.ts";
-import { printRetryConnectionInfo } from "../../functions/utils/messages/print-retry-conn-info.ts";
+import { printRetryConnectionInfo } from "../../functions/utils/messages/print-retrying-conn-info.ts";
 import { printConnectionErrorInfo } from "../../functions/utils/messages/print-conn-error-info.ts";
 import { printConnectionRetriesOverInfo } from "../../functions/utils/messages/print-conn-retries-over-info.ts";
 import { mapByDataToKlineObj } from "./map-by-data-to-kline-obj.ts";

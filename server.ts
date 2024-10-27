@@ -44,13 +44,24 @@ import { deleteAllWorkingCoins } from "./functions/kv-db/working-coins/delete-al
 import type { Coin } from "./models/shared/coin.ts";
 import { addWorkingCoins } from "./functions/kv-db/working-coins/add-working-coins.ts";
 import { deleteWorkingCoinsButch } from "./functions/kv-db/working-coins/delete-working-coins-butch.ts";
-import { initializeMongoDb } from "./global/mongodb/initialize-mongodb.ts";
+import { getMongoDb } from "./global/mongodb/initialize-mongodb.ts";
+import { BybitWSConnManager } from "./test2.ts";
+import { BinanceWSConnManager } from "./ws/binance/bi-ws-conn-manager.ts";
+
+const db = await getMongoDb();
+const coins = (await db.collection("coins").find({}).toArray()) as Coin[];
+const byCoins = coins.filter((c) => c.exchange == "by" || c.exchange == "biby");
+const biCoins = coins.filter((c) => c.exchange == "bi");
+const bybitWs = new BybitWSConnManager(byCoins, TF.m1);
+//bybitWs.initializeConnections();
+
+const binanceWs = new BinanceWSConnManager(biCoins, TF.m1);
+binanceWs.initializeConnections();
 
 const env = await load();
 export const app = express();
 app.use(express.json());
-const lastAlertTimestamps: { [key: string]: number } = {}; // Store timestamp of the last processed request
-const cooldownTime = 20000; // Cooldown period in milliseconds (e.g., 10 seconds)
+
 const allowedOrigins = [env["ORIGIN_I"], env["ORIGIN_II"]];
 
 app.use(
@@ -59,51 +70,54 @@ app.use(
   })
 );
 
+//--------------------------------------
+//  ✨ BYBIT WS
+//--------------------------------------
+app.get("/start-bybit-ws", (req: any, res: any) => {
+  bybitWs.startConnections();
+  res.send("Bybit WS Connections started");
+});
+
+app.get("/close-bybit-ws", (req: any, res: any) => {
+  bybitWs.closeAllConnections();
+  res.send("Bybit WS Connections closed");
+});
+
+app.get("/get-bybit-ws-status", (req: any, res: any) => {
+  const status = bybitWs.getConnectionStatus();
+  res.send(status);
+});
+
+//--------------------------------------
+//  ✨ BINANCE WS
+//--------------------------------------
+app.get("/start-binance-ws", (req: any, res: any) => {
+  binanceWs.startConnections();
+  res.send("Bybit WS Connections started");
+});
+
+app.get("/close-binance-ws", (req: any, res: any) => {
+  binanceWs.closeAllConnections();
+  res.send("Bybit WS Connections closed");
+});
+
+app.get("/get-binance-ws-status", (req: any, res: any) => {
+  const status = binanceWs.getConnectionStatus();
+  res.send(status);
+});
+
+//--------------------------------------
+//  ✨ COINS REPO
+//--------------------------------------
+
 app.get("/get-all-coins", (req: any, res: any) => {
   const coins = getCoinsRepo();
   res.send(coins);
 });
 
-app.get("/get-alerts-repo", (req: any, res: any) => {
-  const repo = getAlertsRepo();
-  res.send(repo);
-});
-
 app.get("/update-coins-repo", async (req: any, res: any) => {
   await initializeCoinsRepo();
-  res.send("OK");
-});
-
-//----------------------------------------
-// ✅ Tv TRIGGERED LERTS
-//----------------------------------------
-app.post("/create-triggered-tv-alert", async (req: any, res: any) => {
-  const currentTimestamp = Date.now();
-  const data: { keyLevelName: string; symbol: string } = req.body;
-  const symbol = data.symbol || "unknown";
-  const alert = await getAlertByKeyLevelName(data);
-  if (
-    !lastAlertTimestamps[symbol] ||
-    currentTimestamp - lastAlertTimestamps[symbol] > cooldownTime
-  ) {
-    // Update the last processed timestamp for this symbol
-    lastAlertTimestamps[symbol] = currentTimestamp;
-    if (alert) {
-      alert.activationTime = new Date().getTime();
-      alert.activationTimeStr = UnixToTime(new Date().getTime());
-      console.log("TRIGGERED ALert", alert);
-      await saveTriggeredAlertObj(alert);
-      await sendTgKeyLevelBreakMessage(alert);
-      // Assuming you're using Status.OK from an external library
-      res.status(200).send("Alert processed successfully.");
-    }
-  } else {
-    // Ignore this request if it's within the cooldown period
-    console.log("Duplicate alert ignored.");
-    res.status(200).send("Duplicate alert ignored.");
-  }
-
-  res.sendStatus(Status.BadRequest);
+  res.send("CoinsRepo updated");
 });
 
 //----------------------------------------
@@ -167,8 +181,6 @@ app.get("/get-all-triggered-alerts", async (req: any, res: any) => {
 
 app.post("/delete-triggered-alerts-butch", async (req: any, res: any) => {
   const ids: string[] = req.body;
-  //TODO:
-  console.log("delete-triggered-alerts-butch ========>", ids);
   const _res = await deleteTriggeredAlertsButch(ids);
   res.send(_res);
 });
@@ -249,7 +261,7 @@ app.listen({ port: 80 }, "0.0.0.0", async () => {
   await initializeCoinsRepo();
   const timeframe = TF.m1;
   console.log("%cServer ---> running...", DColors.green);
-  runWsMain(timeframe);
+  //runWsMain(timeframe);
   initializeAlertsRepo();
-  cronTaskUpdateAlertsRepo();
+  //cronTaskUpdateAlertsRepo();
 });
