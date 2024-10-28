@@ -2,8 +2,6 @@
 import {
   MongoClient,
   Collection,
-  ObjectId,
-  type Document,
   Bson,
 } from "https://deno.land/x/mongo@v0.31.1/mod.ts";
 import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
@@ -27,7 +25,6 @@ type SuccessfulResult = {
 export class CoinRepository {
   private static instance: CoinRepository;
   private coins: Map<string, Coin>;
-
   private static dbClient: MongoClient;
   private static readonly dbName = "general";
   private static readonly collectionName = "coins";
@@ -55,7 +52,7 @@ export class CoinRepository {
     return CoinRepository.instance;
   }
 
-  private static async fetchCoinsFromDb(): Promise<Coin[]> {
+  private static fetchCoinsFromDb(): Promise<Coin[]> {
     return this.collection.find({}).toArray();
   }
 
