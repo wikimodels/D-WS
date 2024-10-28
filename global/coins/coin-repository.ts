@@ -2,6 +2,9 @@
 import {
   MongoClient,
   Collection,
+  ObjectId,
+  type Document,
+  Bson,
 } from "https://deno.land/x/mongo@v0.31.1/mod.ts";
 import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
 import type { Coin } from "../../models/shared/coin.ts";
@@ -59,29 +62,43 @@ export class CoinRepository {
   public async updateCoinInDb(
     symbol: string,
     updatedData: Partial<Coin>
-  ): Promise<number> {
+  ): Promise<{ modified: boolean; modifiedCount?: number }> {
     const { modifiedCount } = await CoinRepository.collection.updateOne(
       { symbol },
       { $set: updatedData }
     );
     await this.refreshRepository();
-    return modifiedCount;
+    if (modifiedCount > 0) {
+      return { modified: true, modifiedCount: modifiedCount };
+    }
+    return { modified: false };
   }
 
-  public async addCoinToDb(newCoin: Coin): Promise<string> {
-    const { insertedId } = (await CoinRepository.collection.insertOne(
+  public async addCoinToDb(
+    newCoin: Coin
+  ): Promise<{ inserted: boolean; insertedId?: number }> {
+    const res = (await CoinRepository.collection.insertOne(
       newCoin
-    )) as { insertedId: string };
+    )) as Bson.ObjectId | null;
+
     await this.refreshRepository();
-    return insertedId as string;
+    if (res) {
+      return { inserted: true, insertedId: res.toJSON() };
+    }
+    return { inserted: false };
   }
 
-  public async deleteCoinFromDb(symbol: string): Promise<number> {
+  public async deleteCoinFromDb(
+    symbol: string
+  ): Promise<{ deleted: boolean; deletedCount?: number }> {
     const { deletedCount } = (await CoinRepository.collection.deleteOne({
       symbol,
     })) as unknown as { deletedCount: number };
     await this.refreshRepository();
-    return deletedCount;
+    if (deletedCount > 0) {
+      return { deleted: true, deletedCount: deletedCount };
+    }
+    return { deleted: false };
   }
 
   private async refreshRepository(): Promise<void> {
@@ -93,13 +110,13 @@ export class CoinRepository {
     return Array.from(this.coins.values());
   }
 
-  public ByCoins(): Coin[] {
+  public getyBybitCoins(): Coin[] {
     return Array.from(this.coins.values()).filter(
       (coin) => coin.exchange === "by" || coin.exchange === "biby"
     );
   }
 
-  public BiCoins(): Coin[] {
+  public getBinanceCoins(): Coin[] {
     return Array.from(this.coins.values()).filter(
       (coin) => coin.exchange === "bi"
     );
