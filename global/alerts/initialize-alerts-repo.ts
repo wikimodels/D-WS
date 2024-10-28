@@ -1,6 +1,5 @@
 import { AlertsRepo } from "../../models/alerts/alerts-repo.ts";
 import { getAllAlertObjs } from "../../functions/kv-db/alerts-crud/alerts/get-all-alert-objs.ts";
-import { getCoinsRepo } from "../coins/coins-repo.ts";
 
 export let alertsRepo: AlertsRepo[] = [];
 
@@ -9,7 +8,7 @@ export function getAlertsRepo() {
   return repo;
 }
 export async function initializeAlertsRepo() {
-  const coins = getCoinsRepo();
+  const coins: any[] = [];
   const alerts = await getAllAlertObjs();
 
   coins.forEach((c) => {

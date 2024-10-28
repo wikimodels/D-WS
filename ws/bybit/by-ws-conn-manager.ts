@@ -1,6 +1,6 @@
+// deno-lint-ignore-file no-explicit-any
 import { StandardWebSocketClient } from "https://deno.land/x/websocket@v0.1.4/mod.ts";
 import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
-import { sendTgWsErrorMessage } from "../../functions/tg/send-tg-ws-error-msg.ts";
 import { printConnectionClosedInfo } from "../../functions/utils/messages/print-conn-closed-info.ts";
 import { printConnectionErrorInfo } from "../../functions/utils/messages/print-conn-error-info.ts";
 import { printMaxRetriesReachedInfo } from "../../functions/utils/messages/print-max-retries-reached-info.ts";
@@ -15,6 +15,7 @@ import type { ConnectionStatus } from "../../models/shared/conn-status.ts";
 import type { Exchange } from "../../models/shared/exchange.ts";
 import type { TF } from "../../models/shared/timeframes.ts";
 import { mapByDataToKlineObj } from "./map-by-data-to-kline-obj.ts";
+import { failedConnectionManager } from "../../global/errors-handling/failed-connections.ts";
 
 const env = await load();
 
@@ -139,7 +140,29 @@ export class BybitWSConnManager {
     }));
   }
 
-  private async reconnectToWs(connObj: ConnObj) {
+  getConnectionStatus() {
+    const status: ConnectionStatus = {
+      coinsLen: this.allSymbols.size,
+      activeConnLen: this.connections.size,
+      inactiveConn: Array.from(this.allSymbols).filter(
+        (symbol) => !this.connections.has(symbol)
+      ),
+      timestamp: new Date().getTime(),
+      timestampStr: UnixToTime(new Date().getTime()),
+    };
+    return status;
+  }
+
+  closeAllConnections() {
+    this.shouldReconnect = false;
+    this.connections.forEach((ws, symbol) => {
+      console.log("Closing connection:", symbol);
+      ws.close();
+    });
+    this.connections.clear();
+  }
+
+  private reconnectToWs(connObj: ConnObj) {
     const retryCount = this.retryCounts.get(connObj.symbol) ?? 0;
 
     if (retryCount < this.maxRetries && this.shouldReconnect) {
@@ -163,30 +186,11 @@ export class BybitWSConnManager {
         retryCount,
         Colors.red
       );
-      const errorMsg = `Connection closed after ${retryCount} retries`;
-      await sendTgWsErrorMessage(connObj, errorMsg);
+      failedConnectionManager.addFailedConnection(
+        connObj.symbol,
+        connObj.exchange,
+        retryCount
+      );
     }
-  }
-
-  getConnectionStatus() {
-    const status: ConnectionStatus = {
-      coinsLen: this.allSymbols.size,
-      activeConnLen: this.connections.size,
-      inactiveConn: Array.from(this.allSymbols).filter(
-        (symbol) => !this.connections.has(symbol)
-      ),
-      timestamp: new Date().getTime(),
-      timestampStr: UnixToTime(new Date().getTime()),
-    };
-    return status;
-  }
-
-  closeAllConnections() {
-    this.shouldReconnect = false;
-    this.connections.forEach((ws, symbol) => {
-      console.log("Closing connection:", symbol);
-      ws.close();
-    });
-    this.connections.clear();
   }
 }

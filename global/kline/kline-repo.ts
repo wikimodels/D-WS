@@ -1,7 +1,6 @@
 import { _ } from "https://cdn.skypack.dev/lodash";
 import { logKlineRepoState } from "../../functions/kv-db/ws-health/log-kline-repo-state.ts";
 import type { KlineObj } from "../../models/shared/kline.ts";
-import { getCoinsRepo } from "../coins/coins-repo.ts";
 import { UnixToTime } from "../../functions/utils/time-converter.ts";
 
 let klineRepo: KlineObj[] = [];
@@ -15,7 +14,7 @@ export function KlineRepo() {
 }
 
 export async function emptyKlineRepo() {
-  const coins = getCoinsRepo();
+  const coins: any[] = [];
 
   const obj = {
     klineRepoBefore: klineRepo.length,

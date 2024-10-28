@@ -1,82 +1,128 @@
-// deno-lint-ignore-file no-unused-vars no-explicit-any
-import Binance, { KlineInterval, parseRawWsMessage } from "npm:binance";
-
+// deno-lint-ignore-file no-explicit-any
 import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
-import { printConnectionClosedInfo } from "./functions/utils/messages/print-conn-closed-info.ts";
-import { printConnectionErrorInfo } from "./functions/utils/messages/print-conn-error-info.ts";
-import { printOpenConnectionInfo } from "./functions/utils/messages/print-open-conn-info.ts";
-import { printReconnectingInfo } from "./functions/utils/messages/print-reconn-info.ts";
-import { printReconnectedInfo } from "./functions/utils/messages/print-reconnected-info.ts";
-import { addToKlineRepo } from "./global/kline/kline-repo.ts";
-import { Colors } from "./models/shared/colors.ts";
-import type { TF } from "./models/shared/timeframes.ts";
-import { mapBiDataToKlineObj } from "./ws/binance/map-bi-data-to-kline-obj.ts";
-import type { Exchange } from "./models/shared/exchange.ts";
+import { CoinRepository } from "./global/coins/coin-repository.ts";
+import type { Coin } from "./models/shared/coin.ts";
 
 const env = await load();
+// Fetch kline data for all Bybit coins in parallel and update their categories
+await CoinRepository.initializeFromDb();
+const coinsRepo = CoinRepository.getInstance();
+const byCoins = coinsRepo.ByCoins();
 
-const logger = {
-  ...Binance.DefaultLogger,
-  silly: () => {},
-};
+export async function updateAllBybitCoinCategories(
+  interval = "D",
+  limit = 1
+): Promise<any> {
+  let bybitCoins = coinsRepo.getAllCoins().filter((c) => c.exchange == "by");
 
-const ws = new Binance.WebsocketClient(
-  {
-    api_key: env["BINANCE_API_KEY"],
-    api_secret: env["BINANCE_SECRET_KEY"],
-    beautify: true,
-  },
-  logger
-);
+  // Map over each coin symbol to create an array of promises for kline data
+  const klinePromises = bybitCoins.map((coin) =>
+    fetchKlineData(coin.symbol, interval, limit)
+      .then((data) => ({
+        success: true,
+        symbol: coin.symbol,
+        data,
+      }))
+      .catch((error) => {
+        console.error(`Failed to fetch kline for ${coin.symbol}:`, error);
+        return {
+          success: false,
+          symbol: coin.symbol,
+          error: error.message,
+        };
+      })
+  );
 
-export function collectBiKlineData(
+  const responseData = await Promise.all(klinePromises);
+
+  // Separate successful and failed requests
+  const successfulData = responseData.filter((result) => result.success);
+  const failedData = responseData.filter((result) => !result.success);
+
+  const turnover24hData = successfulData
+    .filter(
+      (
+        result
+      ): result is {
+        success: true;
+        symbol: string;
+        data: { symbol: string; turnover24h: number };
+      } => result.success
+    )
+    .map((s) => ({
+      symbol: s.symbol,
+      turnover24h: s.data.turnover24h, // Assuming turnover24h is a field in s.data
+    }));
+
+  //TODO:
+
+  bybitCoins = updateCoinCategories(byCoins, turnover24hData);
+
+  for (const coin of bybitCoins) {
+    await this.updateCoinInDb(coin.symbol, { category: coin.category });
+  }
+
+  //Refresh the repository to sync local data with database
+  await this.refreshRepository();
+}
+
+// Fetches kline data for a given symbol and returns the total volume
+async function fetchKlineData(
   symbol: string,
-  timeframe: TF,
-  coinExchange: Exchange
+  interval: string,
+  limit: number
+): Promise<{ symbol: string; turnover24h: number }> {
+  const response = await fetch(
+    env["BYBIT_FUTURES_KLINE"] +
+      `?category=linear&symbol=${symbol}&interval=${interval}&limit=${limit}`
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch kline data: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  if (data.retMsg != "OK") {
+    throw new Error("No kline data returned from Bybit");
+  }
+
+  // Calculate total volume from the kline data
+  return { symbol: data.result.symbol, turnover24h: data.result.list[0][6] };
+}
+
+export function updateCoinCategories(
+  coins: Coin[],
+  turnover24hs: { symbol: string; turnover24h: number }[]
 ) {
-  const exchange = "BINANCE";
-  const connectionType = "KLINE-" + timeframe;
-
-  ws.subscribeKlines(symbol, timeframe as KlineInterval, "usdm", true);
-
-  ws.on("open", (data: any) => {
-    printOpenConnectionInfo(exchange, symbol, connectionType, Colors.magenta);
+  coins.forEach((c) => {
+    turnover24hs.forEach((t) => {
+      if (t.symbol == c.symbol) {
+        //TODO:
+        console.log("CHECKED", c.symbol);
+        c.category = assignCategory(t.turnover24h);
+      }
+    });
   });
-
-  ws.on("message", (data: any) => {
-    const kline = mapBiDataToKlineObj(data, coinExchange);
-    if (kline.final) {
-      addToKlineRepo(kline);
-    }
-  });
-
-  ws.on("reconnecting", (data: any) => {
-    printReconnectingInfo(exchange, symbol, connectionType, Colors.magenta);
-  });
-
-  ws.on("reconnected", (data: any) => {
-    printReconnectedInfo(exchange, symbol, connectionType, Colors.magenta);
-  });
-
-  ws.on("error", (error: any) => {
-    printConnectionErrorInfo(
-      exchange,
-      symbol,
-      connectionType,
-      Colors.red,
-      error
-    );
-    reconnectToWs(symbol, timeframe, coinExchange);
-  });
-
-  ws.on("close", (data: any) => {
-    printConnectionClosedInfo(exchange, symbol, connectionType, Colors.yellow);
-    reconnectToWs(symbol, timeframe, coinExchange);
-  });
+  return coins;
 }
 
-function reconnectToWs(symbol: string, timeframe: TF, coinExchange: Exchange) {
-  setTimeout(() => {
-    collectBiKlineData(symbol, timeframe, coinExchange);
-  }, 1000); // Reconnect after 5 seconds
+export function assignCategory(turnover24h: number) {
+  if (turnover24h > 200 * 1000 * 1000) {
+    return "I";
+  }
+  if (turnover24h < 200 * 1000 * 1000 && turnover24h >= 100 * 1000 * 1000) {
+    return "II";
+  }
+  if (turnover24h < 100 * 1000 * 1000 && turnover24h >= 50 * 1000 * 1000) {
+    return "III";
+  }
+  if (turnover24h < 50 * 1000 * 1000 && turnover24h >= 10 * 1000 * 1000) {
+    return "IV";
+  }
+  if (turnover24h < 10 * 1000 * 1000) {
+    return "V";
+  }
+  return "";
 }
+
+updateAllBybitCoinCategories();

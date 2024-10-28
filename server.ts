@@ -4,11 +4,7 @@ import cors from "npm:cors";
 import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
 
 import { DColors } from "./models/shared/colors.ts";
-import { runWsMain } from "./ws/ws-main.ts";
-import {
-  getAlertsRepo,
-  initializeAlertsRepo,
-} from "./global/alerts/initialize-alerts-repo.ts";
+import { initializeAlertsRepo } from "./global/alerts/initialize-alerts-repo.ts";
 import { TF } from "./models/shared/timeframes.ts";
 import { AlertObj } from "./models/alerts/alert-obj.ts";
 import { deleteAllAlertObjs } from "./functions/kv-db/alerts-crud/alerts/delete-all-alert-objs.ts";
@@ -16,13 +12,10 @@ import { createAlertObj } from "./functions/kv-db/alerts-crud/alerts/create-aler
 import { getAllAlertObjs } from "./functions/kv-db/alerts-crud/alerts/get-all-alert-objs.ts";
 import { updateAlertObj } from "./functions/kv-db/alerts-crud/alerts/update-alert-obj.ts";
 import { deleteAlertsButch } from "./functions/kv-db/alerts-crud/alerts/delete-alerts-butch.ts";
-import { cronTaskUpdateAlertsRepo } from "./functions/cron-tasks/update-alerts-repo.ts";
+
 import { addCoinExchange } from "./global/coins/add-coin-exchange.ts";
 import { addLinks } from "./global/coins/add-links.ts";
-import {
-  getCoinsRepo,
-  initializeCoinsRepo,
-} from "./global/coins/coins-repo.ts";
+
 import { addCoinCategory } from "./global/coins/add-coin-category.ts";
 import { deleteAllTriggeredAlertObjs } from "./functions/kv-db/alerts-crud/triggered-alerts/delete-all-triggered-alert-objs%20copy.ts";
 import { deleteTriggeredAlertsButch } from "./functions/kv-db/alerts-crud/triggered-alerts/delete-triggered-alerts-butch.ts";
@@ -32,10 +25,7 @@ import { getAllArchivedAlertObjs } from "./functions/kv-db/alerts-crud/archived-
 import { createArchivedAlertObj } from "./functions/kv-db/alerts-crud/archived-alerts/create-archived-alert-obj.ts";
 import { deleteArchivedAlertsButch } from "./functions/kv-db/alerts-crud/archived-alerts/delete-archived-alerts-butch.ts";
 import { deleteAllArchivedAlertObjs } from "./functions/kv-db/alerts-crud/archived-alerts/delete-all-archived-alert-objs.ts";
-import { getAlertByKeyLevelName } from "./functions/kv-db/alerts-crud/alerts/get-alert-by-key-level-name.ts";
-import { saveTriggeredAlertObj } from "./functions/kv-db/alerts-crud/triggered-alerts/save-triggered-alert-obj.ts";
-import { sendTgKeyLevelBreakMessage } from "./functions/tg/key-level-break/send-tg-key-level-break-msg.ts";
-import { Status } from "https://deno.land/std@0.92.0/http/http_status.ts";
+
 import { getAllTriggeredAlertObjs } from "./functions/kv-db/alerts-crud/triggered-alerts/get-all-triggered-alert-objs.ts";
 import { getKlineRepoStateLog } from "./functions/kv-db/ws-health/get-kline-repo-state-log.ts";
 import { cleanKlineRepoStateLog } from "./functions/kv-db/ws-health/clean-kline-repo-state-log.ts";
@@ -45,18 +35,46 @@ import type { Coin } from "./models/shared/coin.ts";
 import { addWorkingCoins } from "./functions/kv-db/working-coins/add-working-coins.ts";
 import { deleteWorkingCoinsButch } from "./functions/kv-db/working-coins/delete-working-coins-butch.ts";
 import { getMongoDb } from "./global/mongodb/initialize-mongodb.ts";
-import { BybitWSConnManager } from "./test2.ts";
-import { BinanceWSConnManager } from "./ws/binance/bi-ws-conn-manager.ts";
 
-const db = await getMongoDb();
-const coins = (await db.collection("coins").find({}).toArray()) as Coin[];
-const byCoins = coins.filter((c) => c.exchange == "by" || c.exchange == "biby");
-const biCoins = coins.filter((c) => c.exchange == "bi");
-const bybitWs = new BybitWSConnManager(byCoins, TF.m1);
+import { BinanceWSConnManager } from "./ws/binance/bi-ws-conn-manager.ts";
+import { BybitWSConnManager } from "./ws/bybit/by-ws-conn-manager.ts";
+import { CoinRepository } from "./global/coins/coin-repository.ts";
+import { updateAllBybitCoinCategories } from "./test.ts";
+
+//INSERT
+//new ObjectId("671f5144c83dbc1b90b38ff1")
+
+//UPDATE
+// {
+//   upsertedId: undefined,
+//   upsertedCount: 0,
+//   matchedCount: 1,
+//   modifiedCount: 1
+// }
+//DELETE
+//1
+
+const coin: Coin = {
+  symbol: "SHITUSDT",
+  turnover24h: 0,
+  exchange: "by",
+  category: "I",
+  logo: "shit.svg",
+  devAct: "www.shit.com",
+  devActUrl: "www.shit.com",
+  minQty: 1,
+  minNotional: 2,
+  tickSize: 3,
+};
+await CoinRepository.initializeFromDb();
+const coinRepo = CoinRepository.getInstance();
+const res = await coinRepo.addCoinToDb(coin);
+console.log(res);
+//const bybitWs = new BybitWSConnManager(coinRepo.getByCoins(), TF.m1);
 //bybitWs.initializeConnections();
 
-const binanceWs = new BinanceWSConnManager(biCoins, TF.m1);
-binanceWs.initializeConnections();
+//const binanceWs = new BinanceWSConnManager(coinRepo.getBiCoins(), TF.m1);
+//binanceWs.initializeConnections();
 
 const env = await load();
 export const app = express();
@@ -70,16 +88,21 @@ app.use(
   })
 );
 
+app.get("/get-shit", async (req: any, res: any) => {
+  const result = await coinRepo.updateAllBinanceCoinCategories();
+  res.send(result);
+});
+
 //--------------------------------------
 //  ✨ BYBIT WS
 //--------------------------------------
 app.get("/start-bybit-ws", (req: any, res: any) => {
-  bybitWs.startConnections();
+  //bybitWs.startConnections();
   res.send("Bybit WS Connections started");
 });
 
 app.get("/close-bybit-ws", (req: any, res: any) => {
-  bybitWs.closeAllConnections();
+  //bybitWs.closeAllConnections();
   res.send("Bybit WS Connections closed");
 });
 
@@ -92,18 +115,19 @@ app.get("/get-bybit-ws-status", (req: any, res: any) => {
 //  ✨ BINANCE WS
 //--------------------------------------
 app.get("/start-binance-ws", (req: any, res: any) => {
-  binanceWs.startConnections();
-  res.send("Bybit WS Connections started");
+  //binanceWs.startConnections();
+  //const status = binanceWs.getConnectionStatus();
+  res.send("Binance WS Connections started");
 });
 
 app.get("/close-binance-ws", (req: any, res: any) => {
-  binanceWs.closeAllConnections();
-  res.send("Bybit WS Connections closed");
+  //binanceWs.closeAllConnections();
+  res.send("Binance WS Connections closed");
 });
 
 app.get("/get-binance-ws-status", (req: any, res: any) => {
-  const status = binanceWs.getConnectionStatus();
-  res.send(status);
+  //const status = binanceWs.getConnectionStatus();
+  res.send("OK");
 });
 
 //--------------------------------------
@@ -116,7 +140,6 @@ app.get("/get-all-coins", (req: any, res: any) => {
 });
 
 app.get("/update-coins-repo", async (req: any, res: any) => {
-  await initializeCoinsRepo();
   res.send("CoinsRepo updated");
 });
 
@@ -124,7 +147,7 @@ app.get("/update-coins-repo", async (req: any, res: any) => {
 // ✅ ALERTS
 //----------------------------------------
 app.post("/create-alert", async (req: any, res: any) => {
-  const coins = getCoinsRepo();
+  const coins = [];
   let alert: AlertObj = req.body;
   console.log(alert);
   alert.id = crypto.randomUUID();
@@ -141,7 +164,7 @@ app.post("/create-alert", async (req: any, res: any) => {
 });
 
 app.post("/create-alert-butch", async (req: any, res: any) => {
-  const coins = getCoinsRepo();
+  const coins = [];
   const alerts: AlertObj[] = req.body;
   const response = await createAlertButch(alerts, coins);
   res.send(response);
@@ -258,7 +281,6 @@ app.get("/clean-kline-repo-state-log", async (req: any, res: any) => {
 //----------------------------------------
 
 app.listen({ port: 80 }, "0.0.0.0", async () => {
-  await initializeCoinsRepo();
   const timeframe = TF.m1;
   console.log("%cServer ---> running...", DColors.green);
   //runWsMain(timeframe);
