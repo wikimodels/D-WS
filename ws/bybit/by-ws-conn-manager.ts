@@ -31,6 +31,7 @@ export class BybitWSConnManager {
   private timeframe: TF;
   private projectName = env["PROJECT_NAME"];
   private shouldReconnect = true;
+  private isStarted = false;
 
   constructor(coins: Coin[], timeframe: TF) {
     this.connObjs = this.getConnObjs(coins, timeframe);
@@ -52,9 +53,14 @@ export class BybitWSConnManager {
 
   // Method to start connections manually
   startConnections() {
+    if (this.isStarted) {
+      return { status: "Bybit WS Connections already running" };
+    }
+    this.isStarted = true;
     this.shouldReconnect = true; // Enable reconnection attempts
     console.log("Starting connections manually...");
     this.initializeConnections(); // Initialize all connections
+    return { status: "Bybit WS Connections started" };
   }
 
   private createWsConnection(connObj: ConnObj) {
@@ -154,12 +160,17 @@ export class BybitWSConnManager {
   }
 
   closeAllConnections() {
+    if (!this.isStarted) {
+      return { status: "Bybit WS Connections already closed" };
+    }
+    this.isStarted = false;
     this.shouldReconnect = false;
     this.connections.forEach((ws, symbol) => {
       console.log("Closing connection:", symbol);
       ws.close();
     });
     this.connections.clear();
+    return { status: "Bybit WS Connections closed" };
   }
 
   private reconnectToWs(connObj: ConnObj) {

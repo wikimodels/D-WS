@@ -30,6 +30,7 @@ export class BinanceWSConnManager {
   private timeframe: TF;
   private projectName = env["PROJECT_NAME"];
   private shouldReconnect = true;
+  private isStarted = false;
 
   constructor(coins: Coin[], timeframe: TF) {
     this.connObjs = this.getConnObjs(coins, timeframe);
@@ -51,9 +52,14 @@ export class BinanceWSConnManager {
 
   // Method to start connections manually
   startConnections() {
+    if (this.isStarted) {
+      return { status: "Binance WS Connections already running" };
+    }
+    this.isStarted = true;
     this.shouldReconnect = true; // Enable reconnection attempts
     console.log("Starting connections manually...");
     this.initializeConnections(); // Initialize all connections
+    return { status: "Binance WS Connections started" };
   }
 
   private createWsConnection(connObj: ConnObj) {
@@ -140,12 +146,17 @@ export class BinanceWSConnManager {
   }
 
   closeAllConnections() {
+    if (!this.isStarted) {
+      return { status: "Binance WS Connections already closed" };
+    }
+    this.isStarted = false;
     this.shouldReconnect = false;
     this.connections.forEach((ws, symbol) => {
       console.log("Closing connection:", symbol);
       ws.close();
     });
     this.connections.clear();
+    return { status: "Binance WS Connections closed" };
   }
 
   private reconnectToWs(connObj: ConnObj) {

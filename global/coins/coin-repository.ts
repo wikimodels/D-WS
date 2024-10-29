@@ -107,7 +107,7 @@ export class CoinRepository {
     return Array.from(this.coins.values());
   }
 
-  public getyBybitCoins(): Coin[] {
+  public getBybitCoins(): Coin[] {
     return Array.from(this.coins.values()).filter(
       (coin) => coin.exchange === "by" || coin.exchange === "biby"
     );

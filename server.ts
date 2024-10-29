@@ -3,6 +3,7 @@ import express from "npm:express@4.18.2";
 import cors from "npm:cors";
 import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
 
+import coinRoutes from "./routes/coins.routes.ts";
 import { DColors } from "./models/shared/colors.ts";
 import { initializeAlertsRepo } from "./global/alerts/initialize-alerts-repo.ts";
 import { TF } from "./models/shared/timeframes.ts";
@@ -54,22 +55,22 @@ import { updateAllBybitCoinCategories } from "./test.ts";
 //DELETE
 //1
 
-const coin: Coin = {
-  symbol: "SHITUSDT",
-  turnover24h: 0,
-  exchange: "by",
-  category: "I",
-  logo: "shit.svg",
-  devAct: "www.shit.com",
-  devActUrl: "www.shit.com",
-  minQty: 1,
-  minNotional: 2,
-  tickSize: 3,
-};
-await CoinRepository.initializeFromDb();
-const coinRepo = CoinRepository.getInstance();
-const res = await coinRepo.addCoinToDb(coin);
-console.log(res);
+// const coin: Coin = {
+//   symbol: "SHITUSDT",
+//   turnover24h: 0,
+//   exchange: "by",
+//   category: "I",
+//   logo: "shit.svg",
+//   devAct: "www.shit.com",
+//   devActUrl: "www.shit.com",
+//   minQty: 1,
+//   minNotional: 2,
+//   tickSize: 3,
+// };
+
+// const coinRepo = CoinRepository.getInstance();
+// const res = await coinRepo.addCoinToDb(coin);
+// console.log(res);
 //const bybitWs = new BybitWSConnManager(coinRepo.getByCoins(), TF.m1);
 //bybitWs.initializeConnections();
 
@@ -78,9 +79,9 @@ console.log(res);
 
 const env = await load();
 export const app = express();
-app.use(express.json());
-
 const allowedOrigins = [env["ORIGIN_I"], env["ORIGIN_II"]];
+
+app.use(express.json());
 
 app.use(
   cors({
@@ -88,9 +89,11 @@ app.use(
   })
 );
 
-app.get("/get-shit", async (req: any, res: any) => {
-  const result = await coinRepo.updateAllBinanceCoinCategories();
-  res.send(result);
+app.use("/api", coinRoutes);
+
+app.get("/shit", (req: any, res: any) => {
+  console.log(coinRoutes);
+  res.send("ok");
 });
 
 //--------------------------------------
@@ -107,8 +110,8 @@ app.get("/close-bybit-ws", (req: any, res: any) => {
 });
 
 app.get("/get-bybit-ws-status", (req: any, res: any) => {
-  const status = bybitWs.getConnectionStatus();
-  res.send(status);
+  //const status = bybitWs.getConnectionStatus();
+  res.send("status");
 });
 
 //--------------------------------------
@@ -130,24 +133,11 @@ app.get("/get-binance-ws-status", (req: any, res: any) => {
   res.send("OK");
 });
 
-//--------------------------------------
-//  ✨ COINS REPO
-//--------------------------------------
-
-app.get("/get-all-coins", (req: any, res: any) => {
-  const coins = getCoinsRepo();
-  res.send(coins);
-});
-
-app.get("/update-coins-repo", async (req: any, res: any) => {
-  res.send("CoinsRepo updated");
-});
-
 //----------------------------------------
 // ✅ ALERTS
 //----------------------------------------
 app.post("/create-alert", async (req: any, res: any) => {
-  const coins = [];
+  const coins: Coin[] = [];
   let alert: AlertObj = req.body;
   console.log(alert);
   alert.id = crypto.randomUUID();
@@ -164,7 +154,7 @@ app.post("/create-alert", async (req: any, res: any) => {
 });
 
 app.post("/create-alert-butch", async (req: any, res: any) => {
-  const coins = [];
+  const coins: Coin[] = [];
   const alerts: AlertObj[] = req.body;
   const response = await createAlertButch(alerts, coins);
   res.send(response);
