@@ -1,14 +1,16 @@
-// deno-lint-ignore-file no-unused-vars
+// deno-lint-ignore-file no-explicit-any
 import { CoinRepository } from "../global/coins/coin-repository.ts";
 import type { Coin } from "../models/shared/coin.ts";
 
-await CoinRepository.initializeFromDb();
-const coinRepo = CoinRepository.getInstance();
-
-export const getAllCoins = (req: any, res: any) => {
+// Route handlers
+export const getAllCoins = (_req: any, res: any) => {
   try {
-    const coins = coinRepo.getAllCoins(); // Await if this is an async function
-    res.status(200).send(coins); // Send successful response with coins data
+    const coinRepo = CoinRepository.getInstance();
+    if (coinRepo) {
+      res.status(200).send(coinRepo.getAllCoins());
+    } else {
+      res.status(503).send("CoinRepo not initialized yet");
+    }
   } catch (error) {
     console.error("Error retrieving coins:", error);
     res.status(500).send("An error occurred while fetching coins.");
@@ -17,13 +19,13 @@ export const getAllCoins = (req: any, res: any) => {
 
 export const addCoinToDb = async (req: any, res: any) => {
   const coin = req.body;
-  // Validate the coin object
   if (!coin) {
     return res.status(400).send("Bad Request: Invalid coin structure");
   }
-  // Add to the database if valid
+
   try {
-    const result = await coinRepo.addCoinToDb(coin);
+    const coinRepo = CoinRepository.getInstance();
+    const result = await coinRepo!.addCoinToDb(coin);
     res.status(200).send(result);
   } catch (error) {
     console.error(error);
@@ -33,8 +35,6 @@ export const addCoinToDb = async (req: any, res: any) => {
 
 export const deleteCoinFromDb = async (req: any, res: any) => {
   const { symbol } = req.body;
-
-  // Validate the symbol
   if (!symbol || typeof symbol !== "string") {
     return res
       .status(400)
@@ -42,7 +42,8 @@ export const deleteCoinFromDb = async (req: any, res: any) => {
   }
 
   try {
-    const result = await coinRepo.deleteCoinFromDb(symbol);
+    const coinRepo = CoinRepository.getInstance();
+    const result = await coinRepo!.deleteCoinFromDb(symbol);
     if (!result.deleted) {
       return res.status(404).send(`Coin with symbol '${symbol}' not found.`);
     }
@@ -62,13 +63,13 @@ export const deleteCoinFromDb = async (req: any, res: any) => {
 
 export const updateCoinInDb = async (req: any, res: any) => {
   const coin: Coin = req.body;
-  // Validate the coin object
   if (!coin || !coin.symbol) {
     return res.status(400).send("Bad Request: Invalid coin structure");
   }
-  // Add to the database if valid
+
   try {
-    const result = await coinRepo.updateCoinInDb(coin.symbol, coin);
+    const coinRepo = CoinRepository.getInstance();
+    const result = await coinRepo!.updateCoinInDb(coin.symbol, coin);
     res.status(200).send(result);
   } catch (error) {
     console.error(error);

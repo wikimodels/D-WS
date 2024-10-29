@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-explicit-any
 // coin-repository.ts
 import {
   MongoClient,
@@ -80,7 +81,7 @@ export class CoinRepository {
 
     await this.refreshRepository();
     if (res) {
-      return { inserted: true, insertedId: res.toJSON() };
+      return { inserted: true, insertedId: parseInt(res.toJSON()) };
     }
     return { inserted: false };
   }
@@ -119,6 +120,7 @@ export class CoinRepository {
     );
   }
 
+  //UPDATE BINANCE COIN CATEGORIES
   public async updateAllBinanceCoinCategories(
     interval = "1d",
     limit = 1

@@ -49,6 +49,7 @@ export class BybitWSConnManager {
     for (const connObj of this.connObjs) {
       this.createWsConnection(connObj);
     }
+    this.isStarted = true;
   }
 
   // Method to start connections manually

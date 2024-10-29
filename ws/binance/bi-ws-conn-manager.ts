@@ -48,6 +48,7 @@ export class BinanceWSConnManager {
     for (const connObj of this.connObjs) {
       this.createWsConnection(connObj);
     }
+    this.isStarted = true;
   }
 
   // Method to start connections manually
@@ -69,7 +70,7 @@ export class BinanceWSConnManager {
         this.exchange,
         connObj.symbol,
         this.connectionType,
-        Colors.green
+        Colors.magenta
       );
       this.connections.set(connObj.symbol, ws);
       this.retryCounts.set(connObj.symbol, 0);
