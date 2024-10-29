@@ -3,6 +3,7 @@ import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
 import { CoinRepository } from "../global/coins/coin-repository.ts";
 import { TF } from "../models/shared/timeframes.ts";
 import { BinanceWSConnManager } from "../ws/binance/bi-ws-conn-manager.ts";
+import { DColors } from "../models/shared/colors.ts";
 
 export const { BINANCE_WS_TF } = await load();
 let ws: BinanceWSConnManager | null = null;
@@ -16,8 +17,8 @@ const runBinanceWSConnections = () => {
   ws = new BinanceWSConnManager(coins, BINANCE_WS_TF as TF);
   ws.initializeConnections();
   console.log(
-    "%cBinance WebSocket connections are getting initialized.",
-    "color:blue"
+    "%cBinance WebSocket connections --> getting initialized...",
+    DColors.yellow
   );
 };
 

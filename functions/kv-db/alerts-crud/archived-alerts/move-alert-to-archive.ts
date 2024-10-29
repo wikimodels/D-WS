@@ -1,7 +1,7 @@
 import { AlertObj } from "../../../../models/alerts/alert-obj.ts";
 import { SpaceNames } from "../../../../models/shared/space-names.ts";
 
-export async function createArchivedAlertObj(alertObj: AlertObj) {
+export async function moveAlertToArchive(alertObj: AlertObj) {
   try {
     const kv = await Deno.openKv();
     alertObj.isActive = false;

@@ -2,7 +2,7 @@ import _ from "https://cdn.skypack.dev/lodash";
 import { AlertObj } from "../../../../models/alerts/alert-obj.ts";
 import { SpaceNames } from "../../../../models/shared/space-names.ts";
 
-export async function getAllAlertObjs() {
+export async function fetchAllAlerts() {
   try {
     let objs: AlertObj[] = [];
     const kv = await Deno.openKv();

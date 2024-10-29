@@ -11,33 +11,33 @@ import { DColors } from "./models/shared/colors.ts";
 import { initializeAlertsRepo } from "./global/alerts/initialize-alerts-repo.ts";
 import { TF } from "./models/shared/timeframes.ts";
 import { AlertObj } from "./models/alerts/alert-obj.ts";
-import { deleteAllAlertObjs } from "./functions/kv-db/alerts-crud/alerts/delete-all-alert-objs.ts";
+import { deleteAllAlertObjs } from "./functions/kv-db/alerts-crud/alerts/delete-all-alert.ts";
 import { createAlertObj } from "./functions/kv-db/alerts-crud/alerts/create-alert-obj.ts";
-import { getAllAlertObjs } from "./functions/kv-db/alerts-crud/alerts/get-all-alert-objs.ts";
-import { updateAlertObj } from "./functions/kv-db/alerts-crud/alerts/update-alert-obj.ts";
+import { getAllAlertObjs } from "./functions/kv-db/alerts-crud/alerts/fetch-all-alert.ts";
+import { updateAlertObj } from "./functions/kv-db/alerts-crud/alerts/update-alert.ts";
 import { deleteAlertsButch } from "./functions/kv-db/alerts-crud/alerts/delete-alerts-butch.ts";
 
 import { addCoinExchange } from "./global/coins/add-coin-exchange.ts";
 import { addLinks } from "./global/coins/add-links.ts";
 
 import { addCoinCategory } from "./global/coins/add-coin-category.ts";
-import { deleteAllTriggeredAlertObjs } from "./functions/kv-db/alerts-crud/triggered-alerts/delete-all-triggered-alert-objs%20copy.ts";
-import { deleteTriggeredAlertsButch } from "./functions/kv-db/alerts-crud/triggered-alerts/delete-triggered-alerts-butch.ts";
+import { deleteAllTriggeredAlertObjs } from "./functions/kv-db/alerts-crud/triggered-alerts/delete-all-triggered-alert-ob.ts";
+import { deleteTriggeredAlertsButch } from "./functions/kv-db/alerts-crud/triggered-alerts/delete-triggered-alert-butch.ts";
 import { UnixToTime } from "./functions/utils/time-converter.ts";
 import { createAlertButch } from "./functions/kv-db/alerts-crud/alerts/create-alert-butch.ts";
-import { getAllArchivedAlertObjs } from "./functions/kv-db/alerts-crud/archived-alerts/get-all-archived-alert-objs.ts";
-import { createArchivedAlertObj } from "./functions/kv-db/alerts-crud/archived-alerts/create-archived-alert-obj.ts";
-import { deleteArchivedAlertsButch } from "./functions/kv-db/alerts-crud/archived-alerts/delete-archived-alerts-butch.ts";
-import { deleteAllArchivedAlertObjs } from "./functions/kv-db/alerts-crud/archived-alerts/delete-all-archived-alert-objs.ts";
+import { getAllArchivedAlertObjs } from "./functions/kv-db/alerts-crud/archived-alerts/fetch-all-archived-alerts.ts";
+import { createArchivedAlertObj } from "./functions/kv-db/alerts-crud/archived-alerts/move-alert-to-archive.ts";
+import { deleteArchivedAlertsButch } from "./functions/kv-db/alerts-crud/archived-alerts/delete-alert-butch-from-archive.ts";
+import { deleteAllArchivedAlertObjs } from "./functions/kv-db/alerts-crud/archived-alerts/delete-all-alerts-from-archive.ts";
 
-import { getAllTriggeredAlertObjs } from "./functions/kv-db/alerts-crud/triggered-alerts/get-all-triggered-alert-objs.ts";
+import { getAllTriggeredAlertObjs } from "./functions/kv-db/alerts-crud/triggered-alerts/fetch-all-triggered-alert.ts";
 import { getKlineRepoStateLog } from "./functions/kv-db/ws-health/get-kline-repo-state-log.ts";
 import { cleanKlineRepoStateLog } from "./functions/kv-db/ws-health/clean-kline-repo-state-log.ts";
-import { getAllWorkingCoins } from "./functions/kv-db/working-coins/get-all-working-coins.ts";
-import { deleteAllWorkingCoins } from "./functions/kv-db/working-coins/delete-all-working-coins.ts";
+import { getAllWorkingCoins } from "./functions/kv-db/coins-at-work/fetch-all-coins-at-work.ts";
+import { deleteAllWorkingCoins } from "./functions/kv-db/coins-at-work/remove-all-coins-from-work.ts";
 import type { Coin } from "./models/shared/coin.ts";
-import { addWorkingCoins } from "./functions/kv-db/working-coins/add-working-coins.ts";
-import { deleteWorkingCoinsButch } from "./functions/kv-db/working-coins/delete-working-coins-butch.ts";
+import { addWorkingCoins } from "./functions/kv-db/coins-at-work/contirbute-coins-to-work.ts";
+import { deleteWorkingCoinsButch } from "./functions/kv-db/coins-at-work/remove-coin-butch-from-work.ts";
 import { CoinRepository } from "./global/coins/coin-repository.ts";
 
 const { ORIGIN_I, ORIGIN_II } = await load();
@@ -57,139 +57,6 @@ async function initializeApp() {
   app.use("/api", coinRoutes);
   app.use("/api", binanceWsRoutes);
   app.use("/api", bybitWsRoutes);
-
-  //----------------------------------------
-  // ✅ ALERTS
-  //----------------------------------------
-  app.post("/create-alert", async (req: any, res: any) => {
-    const coins: Coin[] = [];
-    let alert: AlertObj = req.body;
-    console.log(alert);
-    alert.id = crypto.randomUUID();
-    alert.creationTime = new Date().getTime();
-    alert.isActive = true;
-    alert.isTv = false;
-    alert = addCoinExchange(coins, alert);
-    alert = addLinks(alert);
-    alert = addCoinCategory(coins, alert);
-    alert.activationTimeStr = UnixToTime(new Date().getTime());
-
-    const response = await createAlertObj(alert);
-    res.send(response);
-  });
-
-  app.post("/create-alert-butch", async (req: any, res: any) => {
-    const coins: Coin[] = [];
-    const alerts: AlertObj[] = req.body;
-    const response = await createAlertButch(alerts, coins);
-    res.send(response);
-  });
-
-  app.get("/get-all-alerts", async (req: any, res: any) => {
-    const _res = await getAllAlertObjs();
-    res.send(_res);
-  });
-
-  app.post("/update-alert", async (req: any, res: any) => {
-    const obj: AlertObj = req.body;
-    const _res = await updateAlertObj(obj);
-    res.send(_res);
-  });
-
-  app.get("/delete-all-alerts", async (req: any, res: any) => {
-    const _res = await deleteAllAlertObjs();
-    res.send(_res);
-  });
-
-  app.post("/delete-alerts-butch", async (req: any, res: any) => {
-    const ids: string[] = req.body;
-    //TODO:
-    console.log(ids);
-    const _res = await deleteAlertsButch(ids);
-    res.send(_res);
-  });
-
-  //----------------------------------------
-  // ✅ TRIGGERED ALERTS
-  //----------------------------------------
-  app.get("/get-all-triggered-alerts", async (req: any, res: any) => {
-    const _res = await getAllTriggeredAlertObjs();
-    res.send(_res);
-  });
-
-  app.post("/delete-triggered-alerts-butch", async (req: any, res: any) => {
-    const ids: string[] = req.body;
-    const _res = await deleteTriggeredAlertsButch(ids);
-    res.send(_res);
-  });
-
-  app.get("/delete-all-triggered-alerts", async (req: any, res: any) => {
-    const _res = await deleteAllTriggeredAlertObjs();
-    res.send(_res);
-  });
-
-  //----------------------------------------
-  // ✅ ARCHIVED ALERTS
-  //----------------------------------------
-  app.get("/get-all-archived-alerts", async (req: any, res: any) => {
-    const _res = await getAllArchivedAlertObjs();
-    res.send(_res);
-  });
-
-  app.post("/create-archived-alert", async (req: any, res: any) => {
-    const alert: AlertObj = req.body;
-    const response = await createArchivedAlertObj(alert);
-    res.send(response);
-  });
-
-  app.post("/delete-archived-alerts-butch", async (req: any, res: any) => {
-    const ids: string[] = req.body;
-    const _res = await deleteArchivedAlertsButch(ids);
-    res.send(_res);
-  });
-
-  app.get("/delete-all-archived-alerts", async (req: any, res: any) => {
-    const _res = await deleteAllArchivedAlertObjs();
-    res.send(_res);
-  });
-
-  //----------------------------------------
-  // ✅ WORKING COINS
-  //----------------------------------------
-  app.get("/get-all-working-coins", async (req: any, res: any) => {
-    const _res = await getAllWorkingCoins();
-    res.send(_res);
-  });
-
-  app.get("/delete-all-working-coins", async (req: any, res: any) => {
-    const response = await deleteAllWorkingCoins();
-    res.send(response);
-  });
-
-  app.post("/add-working-coins", async (req: any, res: any) => {
-    const coins: Coin[] = req.body;
-    const _res = await addWorkingCoins(coins);
-    res.send(_res);
-  });
-
-  app.post("/delete-working-coins-butch", async (req: any, res: any) => {
-    const coins: Coin[] = req.body;
-    const _res = await deleteWorkingCoinsButch(coins);
-    res.send(_res);
-  });
-
-  //----------------------------------------
-  // ✅ UTILS
-  //----------------------------------------
-  app.get("/get-kline-repo-state-log", async (req: any, res: any) => {
-    const _res = await getKlineRepoStateLog();
-    res.send(_res);
-  });
-
-  app.get("/clean-kline-repo-state-log", async (req: any, res: any) => {
-    const _res = await cleanKlineRepoStateLog();
-    res.send(_res);
-  });
 
   //----------------------------------------
   // ✅ INFRUSTRUCTURE

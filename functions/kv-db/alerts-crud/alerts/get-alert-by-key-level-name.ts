@@ -1,4 +1,4 @@
-import { getAllAlertObjs } from "./get-all-alert-objs.ts";
+import { getAllAlertObjs } from "./fetch-all-alert.ts";
 
 export async function getAlertByKeyLevelName(data: {
   keyLevelName: string;

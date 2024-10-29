@@ -1,16 +1,19 @@
 import type { Coin } from "../../../models/shared/coin.ts";
 import { SpaceNames } from "../../../models/shared/space-names.ts";
 
-export async function deleteWorkingCoinsButch(coins: Coin[]) {
+export async function contributeCoinsToWork(coins: Coin[]) {
   try {
     const kv = await Deno.openKv();
     let counter = 0;
     for (const coin of coins) {
-      await kv.delete([SpaceNames.WorkingCoins, coin.symbol]);
-      counter++;
+      const res = await kv.set([SpaceNames.WorkingCoins, coin.symbol], coin);
+      if (res.ok == true) {
+        counter++;
+      }
     }
-    await kv.close();
-    return { deleted: counter };
+    return {
+      inserted: counter,
+    };
   } catch (e) {
     console.log(e);
   }

@@ -2,7 +2,7 @@ import { _ } from "https://cdn.skypack.dev/-/lodash@v4.17.21-K6GEbP02mWFnLA45zAm
 import { emptyKlineRepo } from "../../global/kline/kline-repo.ts";
 import { KlineRepo } from "../../global/kline/kline-repo.ts";
 import type { AlertObj } from "../../models/alerts/alert-obj.ts";
-import { getAllAlertObjs } from "../kv-db/alerts-crud/alerts/get-all-alert-objs.ts";
+import { getAllAlertObjs } from "../kv-db/alerts-crud/alerts/fetch-all-alert.ts";
 import { saveTriggeredAlertsButch } from "../kv-db/alerts-crud/triggered-alerts/save-triggered-alerts-butch.ts";
 import { sendTgKeyLevelBreakMessage } from "../tg/key-level-break/send-tg-key-level-break-msg.ts";
 

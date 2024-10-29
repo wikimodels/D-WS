@@ -1,6 +1,6 @@
 import { SpaceNames } from "../../../models/shared/space-names.ts";
 
-export async function deleteAllWorkingCoins() {
+export async function removeAllCoinsFromWork() {
   try {
     let counter = 0;
     const kv = await Deno.openKv();

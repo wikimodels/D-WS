@@ -4,6 +4,7 @@ import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
 import { CoinRepository } from "../global/coins/coin-repository.ts";
 import type { TF } from "../models/shared/timeframes.ts";
 import { BybitWSConnManager } from "../ws/bybit/by-ws-conn-manager.ts";
+import { DColors } from "../models/shared/colors.ts";
 
 const { BYBIT_WS_TF } = await load();
 let ws: BybitWSConnManager | null = null;
@@ -17,8 +18,8 @@ export const runBybitWSConnections = () => {
   ws = new BybitWSConnManager(coins, BYBIT_WS_TF as TF);
   ws.initializeConnections();
   console.log(
-    "%cBybit WebSocket connections are getting initialized.",
-    "color:blue"
+    "%cBybit WebSocket connections --> getting initialized...",
+    DColors.magenta
   );
 };
 

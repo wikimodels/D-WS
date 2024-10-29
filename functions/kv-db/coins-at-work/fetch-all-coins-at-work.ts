@@ -3,7 +3,7 @@ import _ from "https://cdn.skypack.dev/lodash";
 import type { Coin } from "../../../models/shared/coin.ts";
 import { SpaceNames } from "../../../models/shared/space-names.ts";
 
-export async function getAllWorkingCoins() {
+export async function fetchAllCoinsAtWork() {
   try {
     let objs: Coin[] = [];
     const kv = await Deno.openKv();

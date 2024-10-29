@@ -1,7 +1,7 @@
 import { SpaceNames } from "../../../../models/shared/space-names.ts";
 
 // deno-lint-ignore-file no-explicit-any
-export async function deleteAlertObj(id: string): Promise<any> {
+export async function deleteAlert(id: string): Promise<any> {
   try {
     const kv = await Deno.openKv();
     const res = await kv.delete([SpaceNames.Alerts, id]);

@@ -1,5 +1,5 @@
 import { AlertsRepo } from "../../models/alerts/alerts-repo.ts";
-import { getAllAlertObjs } from "../../functions/kv-db/alerts-crud/alerts/get-all-alert-objs.ts";
+import { getAllAlertObjs } from "../../functions/kv-db/alerts-crud/alerts/fetch-all-alert.ts";
 
 export let alertsRepo: AlertsRepo[] = [];
 

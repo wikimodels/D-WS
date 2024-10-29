@@ -1,5 +1,5 @@
 import type { AlertObj } from "../../../../models/alerts/alert-obj.ts";
-import { createArchivedAlertObj } from "./create-archived-alert-obj.ts";
+import { createArchivedAlertObj } from "./move-alert-to-archive.ts";
 
 export async function createArchivedAlertButch(alerts: AlertObj[]) {
   try {
