@@ -7,7 +7,6 @@ import { printMaxRetriesReachedInfo } from "../../functions/utils/messages/print
 import { printOpenConnectionInfo } from "../../functions/utils/messages/print-open-conn-info.ts";
 import { printRetryingConnectionInfo } from "../../functions/utils/messages/print-retrying-conn-info.ts";
 import { UnixToTime } from "../../functions/utils/time-converter.ts";
-import { addToKlineRepo } from "../../global/kline/kline-repo.ts";
 import type { Coin } from "../../models/shared/coin.ts";
 import { Colors } from "../../models/shared/colors.ts";
 import type { ConnObj } from "../../models/shared/conn-obj.ts";
@@ -16,6 +15,7 @@ import type { Exchange } from "../../models/shared/exchange.ts";
 import type { TF } from "../../models/shared/timeframes.ts";
 import { mapByDataToKlineObj } from "./map-by-data-to-kline-obj.ts";
 import { failedConnectionManager } from "../../global/errors-handling/failed-connections.ts";
+import { saveCandle } from "../../global/kline/kline-repo.ts";
 
 const env = await load();
 
@@ -95,7 +95,7 @@ export class BybitWSConnManager {
           connObj.coinExchange,
           connObj.symbol
         );
-        addToKlineRepo(kline);
+        saveCandle(kline);
       }
     });
 

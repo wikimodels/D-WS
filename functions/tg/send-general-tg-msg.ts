@@ -16,8 +16,9 @@ export async function sendTgGeneralMessage(msg: string) {
   } catch (error) {
     await emergencyBot.sendMessage({
       chat_id: env["TG_USER"],
-      text: getGeneralErrorMessage("Deno WS Technicals Bot: " + error),
+      text: msg,
       parse_mode: "html",
+      disable_web_page_preview: true,
     });
     console.error(`Deno WS Technicals Bot:`, error);
   }

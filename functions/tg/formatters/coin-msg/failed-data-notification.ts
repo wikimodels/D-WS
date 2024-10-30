@@ -1,4 +1,4 @@
-import { UnixToNamedTimeRu } from "../../utils/time-converter.ts";
+import { UnixToNamedTimeRu } from "../../../utils/time-converter.ts";
 
 export function formatFailedDataNotificationMsg(
   data: { success: boolean; symbol: string; error: string }[],

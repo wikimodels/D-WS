@@ -8,8 +8,8 @@ import {
 import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
 import type { Coin } from "../../models/shared/coin.ts";
 import { sendTgGeneralMessage } from "../../functions/tg/send-general-tg-msg.ts";
-import { formatFailedDataNotificationMsg } from "../../functions/tg/coin.ts/failed-data-notification.ts";
-import { formatFailedUpdatesNotificationMsg } from "../../functions/tg/coin.ts/failed-updates-notification.ts";
+import { formatFailedDataNotificationMsg } from "../../functions/tg/formatters/coin-msg/failed-data-notification.ts";
+import { formatFailedUpdatesNotificationMsg } from "../../functions/tg/formatters/coin-msg/failed-updates-notification.ts";
 import {
   fetchBinanceKlineData,
   fetchBybitKlineData,

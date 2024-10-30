@@ -6,6 +6,6 @@ import {
 
 const router = express.Router();
 router.get("/triggered-alerts", getAllTriggeredAlerts);
-router.delete("/triggered-alerts/remove-Batch", removeTriggeredAlertBatch);
+router.delete("/triggered-alerts/remove-batch", removeTriggeredAlertBatch);
 
 export default router;

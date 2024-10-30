@@ -15,6 +15,7 @@ import type { TF } from "../../models/shared/timeframes.ts";
 import { mapBiDataToKlineObj } from "./map-bi-data-to-kline-obj.ts";
 import { printOpenConnectionInfo } from "../../functions/utils/messages/print-open-conn-info.ts";
 import { failedConnectionManager } from "../../global/errors-handling/failed-connections.ts";
+import { saveCandle } from "../../global/kline/kline-repo.ts";
 
 const env = await load();
 
@@ -84,8 +85,7 @@ export class BinanceWSConnManager {
           data,
           connObj.coinExchange as Exchange
         );
-        console.log(kline.symbol);
-        //checkAlertsList(kline);
+        saveCandle(kline);
       }
     });
 

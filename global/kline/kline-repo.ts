@@ -2,32 +2,25 @@ import { _ } from "https://cdn.skypack.dev/lodash";
 import { logKlineRepoState } from "../../functions/kv-db/ws-health/log-kline-repo-state.ts";
 import type { KlineObj } from "../../models/shared/kline.ts";
 import { UnixToTime } from "../../functions/utils/time-converter.ts";
+const MAX_CANDLES = 1;
 
-let klineRepo: KlineObj[] = [];
+const candleData = new Map<string, KlineObj[]>();
 
-export function addToKlineRepo(klineObj: KlineObj) {
-  klineRepo.push(klineObj);
+export function saveCandle(obj: KlineObj) {
+  if (!candleData.has(obj.symbol)) {
+    candleData.set(obj.symbol, []);
+  }
+  const candles = candleData.get(obj.symbol)!;
+
+  candles.push(obj);
+
+  // Limit the array length
+  if (candles.length > MAX_CANDLES) {
+    candles.shift(); // Remove the oldest candle
+  }
 }
 
-export function KlineRepo() {
-  return klineRepo;
-}
-
-export async function emptyKlineRepo() {
-  const coins: any[] = [];
-
-  const obj = {
-    klineRepoBefore: klineRepo.length,
-    klineRepoUnique: 0,
-    timestamp: UnixToTime(new Date().getTime()),
-  };
-
-  klineRepo = _.uniqBy(klineRepo, "symbol");
-  obj.klineRepoUnique = klineRepo.length;
-
-  await logKlineRepoState(obj);
-
-  console.log("KlineRepo before cleaning: ", obj);
-  klineRepo.length = 0;
-  console.log("KlineRepo after cleaning: ", klineRepo.length);
+export function getLatestKline(symbol: string): KlineObj | null {
+  const candles = candleData.get(symbol);
+  return candles ? candles[candles.length - 1] : null;
 }
