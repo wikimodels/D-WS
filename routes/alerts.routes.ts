@@ -9,11 +9,12 @@ import {
 } from "../controllers/alerts.controller.ts";
 
 const router = express.Router();
+
 router.get("/alerts", getAllAlerts);
-router.post("/alerts/create-butch", addAlertButch);
-router.get("/alerts/create", addAlert);
-router.post("/alerts/delete-all", removeAllAlerts);
-router.post("/alerts/update", modifyAlert);
-router.post("/alerts/delete-butch", removeAlertButch);
+// router.post("/alerts/batch-create", addAlertButch);
+// router.post("/alerts", addAlert);
+// router.delete("/alerts", removeAllAlerts);
+// router.put("/alerts/update", modifyAlert);
+// router.delete("/alerts/batch-delete", removeAlertButch);
 
 export default router;

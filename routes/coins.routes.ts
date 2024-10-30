@@ -9,7 +9,7 @@ import {
 const router = express.Router();
 router.get("/coins", getAllCoins);
 router.post("/add-coin", addCoinToDb);
-router.post("/delete-coin", deleteCoinFromDb);
-router.post("/update-coin", updateCoinInDb);
+router.delete("/delete-coin", deleteCoinFromDb);
+router.put("/update-coin", updateCoinInDb);
 
 export default router;

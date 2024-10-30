@@ -4,6 +4,9 @@ import { SpaceNames } from "../../../../models/shared/space-names.ts";
 
 export async function fetchAllAlerts() {
   try {
+    //TODO:
+    console.log("FetchAllAlerts --> running...");
+
     let objs: AlertObj[] = [];
     const kv = await Deno.openKv();
 
