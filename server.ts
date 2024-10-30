@@ -15,19 +15,19 @@ import { deleteAllAlertObjs } from "./functions/kv-db/alerts-crud/alerts/delete-
 import { createAlertObj } from "./functions/kv-db/alerts-crud/alerts/create-alert-obj.ts";
 import { getAllAlertObjs } from "./functions/kv-db/alerts-crud/alerts/fetch-all-alert.ts";
 import { updateAlertObj } from "./functions/kv-db/alerts-crud/alerts/update-alert.ts";
-import { deleteAlertsButch } from "./functions/kv-db/alerts-crud/alerts/delete-alerts-butch.ts";
+import { deleteAlertsBatch } from "./functions/kv-db/alerts-crud/alerts/delete-alerts-Batch.ts";
 
 import { addCoinExchange } from "./global/coins/add-coin-exchange.ts";
 import { addLinks } from "./global/coins/add-links.ts";
 
 import { addCoinCategory } from "./global/coins/add-coin-category.ts";
 import { deleteAllTriggeredAlertObjs } from "./functions/kv-db/alerts-crud/triggered-alerts/delete-all-triggered-alert-ob.ts";
-import { deleteTriggeredAlertsButch } from "./functions/kv-db/alerts-crud/triggered-alerts/delete-triggered-alert-butch.ts";
+import { deleteTriggeredAlertsBatch } from "./functions/kv-db/alerts-crud/triggered-alerts/delete-triggered-alert-Batch.ts";
 import { UnixToTime } from "./functions/utils/time-converter.ts";
-import { createAlertButch } from "./functions/kv-db/alerts-crud/alerts/create-alert-butch.ts";
+import { createAlertBatch } from "./functions/kv-db/alerts-crud/alerts/create-alert-Batch.ts";
 import { getAllArchivedAlertObjs } from "./functions/kv-db/alerts-crud/archived-alerts/fetch-all-archived-alerts.ts";
 import { createArchivedAlertObj } from "./functions/kv-db/alerts-crud/archived-alerts/move-alert-to-archive.ts";
-import { deleteArchivedAlertsButch } from "./functions/kv-db/alerts-crud/archived-alerts/delete-alert-butch-from-archive.ts";
+import { deleteArchivedAlertsBatch } from "./functions/kv-db/alerts-crud/archived-alerts/delete-alert-Batch-from-archive.ts";
 import { deleteAllArchivedAlertObjs } from "./functions/kv-db/alerts-crud/archived-alerts/delete-all-alerts-from-archive.ts";
 
 import { getAllTriggeredAlertObjs } from "./functions/kv-db/alerts-crud/triggered-alerts/fetch-all-triggered-alert.ts";
@@ -37,7 +37,7 @@ import { getAllWorkingCoins } from "./functions/kv-db/coins-at-work/fetch-all-co
 import { deleteAllWorkingCoins } from "./functions/kv-db/coins-at-work/remove-all-coins-from-work.ts";
 import type { Coin } from "./models/shared/coin.ts";
 import { addWorkingCoins } from "./functions/kv-db/coins-at-work/contirbute-coins-to-work.ts";
-import { deleteWorkingCoinsButch } from "./functions/kv-db/coins-at-work/remove-coin-butch-from-work.ts";
+import { deleteWorkingCoinsBatch } from "./functions/kv-db/coins-at-work/remove-coin-Batch-from-work.ts";
 import { CoinRepository } from "./global/coins/coin-repository.ts";
 
 const { ORIGIN_I, ORIGIN_II } = await load();

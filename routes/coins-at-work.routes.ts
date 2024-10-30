@@ -7,9 +7,11 @@ import {
 } from "../controllers/coins-at-work.conrtoller.ts";
 
 const router = express.Router();
-router.get("/coins-at-work", getAllCoinsAtWork);
-router.post("/coins-at-work/add-to-work", addCoinsToWork);
-router.get("/coins-at-work/delete-all-from-work", deleteAllCoinsFromWork);
-router.post("/coins-at-work/delete-butch-from-work", deleteCoinBatchFromWork);
+
+// Routes
+router.get("/coins/work", getAllCoinsAtWork);
+router.post("/coins/work/coin", addCoinsToWork);
+router.delete("/coins/work/all", deleteAllCoinsFromWork);
+router.delete("/coins/work/batch", deleteCoinBatchFromWork);
 
 export default router;

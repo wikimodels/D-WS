@@ -1,6 +1,6 @@
 import { SpaceNames } from "../../../../models/shared/space-names.ts";
 
-export async function deleteAlertsButchFromArchive(ids: string[]) {
+export async function deleteAlertsBatchFromArchive(ids: string[]) {
   try {
     const kv = await Deno.openKv();
     let counter = 0;

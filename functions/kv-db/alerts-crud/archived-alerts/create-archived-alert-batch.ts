@@ -1,7 +1,7 @@
 import type { AlertObj } from "../../../../models/alerts/alert-obj.ts";
 import { createArchivedAlertObj } from "./move-alert-to-archive.ts";
 
-export async function createArchivedAlertButch(alerts: AlertObj[]) {
+export async function createArchivedAlertBatch(alerts: AlertObj[]) {
   try {
     let counter = 0;
     for (const alert of alerts) {

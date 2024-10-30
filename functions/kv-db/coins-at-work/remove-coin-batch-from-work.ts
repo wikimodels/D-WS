@@ -1,7 +1,7 @@
 import type { Coin } from "../../../models/shared/coin.ts";
 import { SpaceNames } from "../../../models/shared/space-names.ts";
 
-export async function removeCoinButchFromWork(coins: Coin[]) {
+export async function removeCoinBatchFromWork(coins: Coin[]) {
   try {
     const kv = await Deno.openKv();
     let counter = 0;

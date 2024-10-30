@@ -3,7 +3,7 @@ import { emptyKlineRepo } from "../../global/kline/kline-repo.ts";
 import { KlineRepo } from "../../global/kline/kline-repo.ts";
 import type { AlertObj } from "../../models/alerts/alert-obj.ts";
 import { getAllAlertObjs } from "../kv-db/alerts-crud/alerts/fetch-all-alert.ts";
-import { saveTriggeredAlertsButch } from "../kv-db/alerts-crud/triggered-alerts/save-triggered-alerts-butch.ts";
+import { saveTriggeredAlertsBatch } from "../kv-db/alerts-crud/triggered-alerts/save-triggered-alerts-Batch.ts";
 import { sendTgKeyLevelBreakMessage } from "../tg/key-level-break/send-tg-key-level-break-msg.ts";
 
 export function cronTaskUpdateAlertsRepo() {
@@ -12,7 +12,7 @@ export function cronTaskUpdateAlertsRepo() {
       const triggeredAlerts = await checkAlerts();
       emptyKlineRepo();
       if (triggeredAlerts.length > 0) {
-        await saveTriggeredAlertsButch(triggeredAlerts);
+        await saveTriggeredAlertsBatch(triggeredAlerts);
         await sendTgKeyLevelBreakMessage(triggeredAlerts);
         console.log("CRON SHIT is DONE...");
       }

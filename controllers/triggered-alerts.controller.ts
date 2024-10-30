@@ -1,4 +1,5 @@
-import { deleteTriggeredAlertButch } from "../functions/kv-db/alerts-crud/triggered-alerts/delete-triggered-alert-butch.ts";
+// deno-lint-ignore-file no-explicit-any
+import { deleteTriggeredAlertBatch } from "../functions/kv-db/alerts-crud/triggered-alerts/delete-triggered-alert-Batch.ts";
 import { fetchAllTriggeredAlert } from "../functions/kv-db/alerts-crud/triggered-alerts/fetch-all-triggered-alert.ts";
 
 export const getAllTriggeredAlerts = () => async (_req: any, res: any) => {
@@ -11,10 +12,10 @@ export const getAllTriggeredAlerts = () => async (_req: any, res: any) => {
   }
 };
 
-export const removeTriggeredAlertButch = () => async (req: any, res: any) => {
+export const removeTriggeredAlertBatch = () => async (req: any, res: any) => {
   try {
     const ids: string[] = req.body;
-    const response = await deleteTriggeredAlertButch(ids);
+    const response = await deleteTriggeredAlertBatch(ids);
     res.status(200).send(response);
   } catch (error) {
     console.error("Error deleting triggered alert batch:", error);

@@ -6,7 +6,7 @@ import type { Coin } from "../../../../models/shared/coin.ts";
 import { UnixToTime } from "../../../utils/time-converter.ts";
 import { createAlertObj } from "./create-alert-obj.ts";
 
-export async function createAlertButch(alerts: AlertObj[], coins: Coin[]) {
+export async function createAlertBatch(alerts: AlertObj[], coins: Coin[]) {
   try {
     let counter = 0;
     for (let alert of alerts) {

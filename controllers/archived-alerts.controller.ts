@@ -1,4 +1,4 @@
-import { deleteAlertsButchFromArchive } from "../functions/kv-db/alerts-crud/archived-alerts/delete-alert-butch-from-archive.ts";
+import { deleteAlertsBatchFromArchive } from "../functions/kv-db/alerts-crud/archived-alerts/delete-alert-Batch-from-archive.ts";
 import { deleteAllAlertsFromArchive } from "../functions/kv-db/alerts-crud/archived-alerts/delete-all-alerts-from-archive.ts";
 import { fetchAllArchivedAlerts } from "../functions/kv-db/alerts-crud/archived-alerts/fetch-all-archived-alerts.ts";
 import { moveAlertToArchive } from "../functions/kv-db/alerts-crud/archived-alerts/move-alert-to-archive.ts";
@@ -15,7 +15,7 @@ export const getAllArchivedAlerts = async (_req: any, res: any) => {
   }
 };
 
-export const sendAlertToArchive = async (req: any, res: any) => {
+export const archiveAlert = async (req: any, res: any) => {
   try {
     const alert: AlertObj = req.body;
     const response = await moveAlertToArchive(alert);
@@ -26,10 +26,10 @@ export const sendAlertToArchive = async (req: any, res: any) => {
   }
 };
 
-export const removeAlertButchFromArchive = async (req: any, res: any) => {
+export const deleteArchivedAlertsBatch = async (req: any, res: any) => {
   try {
     const ids: string[] = req.body;
-    const response = await deleteAlertsButchFromArchive(ids);
+    const response = await deleteAlertsBatchFromArchive(ids);
     res.status(200).send(response); // 200 for successful deletion
   } catch (error) {
     console.error("Error deleting alert batch from archive:", error);
@@ -39,7 +39,7 @@ export const removeAlertButchFromArchive = async (req: any, res: any) => {
   }
 };
 
-export const removeAllAlertsFromArchive = async (_req: any, res: any) => {
+export const deleteAllArchivedAlerts = async (_req: any, res: any) => {
   try {
     const response = await deleteAllAlertsFromArchive();
     res.status(200).send(response);

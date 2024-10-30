@@ -2,7 +2,7 @@ import { AlertObj } from "../../../../models/alerts/alert-obj.ts";
 import { SpaceNames } from "../../../../models/shared/space-names.ts";
 import { UnixToTime } from "../../../utils/time-converter.ts";
 
-export async function saveTriggeredAlertsButch(alertObjs: AlertObj[]) {
+export async function saveTriggeredAlertsBatch(alertObjs: AlertObj[]) {
   try {
     const kv = await Deno.openKv();
     for (const alertObj of alertObjs) {

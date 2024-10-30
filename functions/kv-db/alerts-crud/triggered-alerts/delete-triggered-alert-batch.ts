@@ -2,7 +2,7 @@ import { KlineInterval } from "npm:binance";
 import { SpaceNames } from "../../../../models/shared/space-names.ts";
 import { AlertsRepo } from "../../../../models/alerts/alerts-repo.ts";
 
-export async function deleteTriggeredAlertButch(ids: string[]) {
+export async function deleteTriggeredAlertBatch(ids: string[]) {
   try {
     const kv = await Deno.openKv();
 
