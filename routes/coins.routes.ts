@@ -9,8 +9,8 @@ import {
 const router = express.Router();
 // Routes
 router.get("/coins", getAllCoins); // GET all coins
-router.post("/coins", addCoinToDb); // POST to add a new coin
-router.delete("/coins/:id", deleteCoinFromDb); // DELETE a coin by ID
-router.put("/coins/:id", updateCoinInDb); // PUT to update a coin by ID
+router.post("/coins/add", addCoinToDb); // POST to add a new coin
+router.delete("/coins/delete/one", deleteCoinFromDb); // DELETE a coin
+router.put("/coins/update", updateCoinInDb); // PUT to update a coin by ID
 
 export default router;

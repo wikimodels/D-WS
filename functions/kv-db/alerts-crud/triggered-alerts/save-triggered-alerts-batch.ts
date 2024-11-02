@@ -7,7 +7,6 @@ export async function saveTriggeredAlertsBatch(alertObjs: AlertObj[]) {
     const kv = await Deno.openKv();
     for (const alertObj of alertObjs) {
       const activeationTime = new Date().getTime();
-      alertObj.id = crypto.randomUUID();
       alertObj.activationTime = activeationTime;
       alertObj.activationTimeStr = UnixToTime(activeationTime);
       await kv.set([SpaceNames.TriggeredAlerts, alertObj.id], alertObj);

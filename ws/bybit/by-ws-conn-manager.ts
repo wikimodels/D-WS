@@ -14,7 +14,7 @@ import type { ConnectionStatus } from "../../models/shared/conn-status.ts";
 import type { Exchange } from "../../models/shared/exchange.ts";
 import type { TF } from "../../models/shared/timeframes.ts";
 import { mapByDataToKlineObj } from "./map-by-data-to-kline-obj.ts";
-import { failedConnectionManager } from "../../global/errors-handling/failed-connections.ts";
+import { failedConnectionManager } from "../../global/error-handling/failed-connections.ts";
 import { saveCandle } from "../../global/kline/kline-repo.ts";
 
 const env = await load();

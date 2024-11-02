@@ -1,4 +1,5 @@
-import { deleteAlertsBatchFromArchive } from "../functions/kv-db/alerts-crud/archived-alerts/delete-alert-Batch-from-archive.ts";
+// deno-lint-ignore-file no-explicit-any
+import { deleteAlertsBatchFromArchive } from "../functions/kv-db/alerts-crud/archived-alerts/delete-alert-batch-from-archive.ts";
 import { deleteAllAlertsFromArchive } from "../functions/kv-db/alerts-crud/archived-alerts/delete-all-alerts-from-archive.ts";
 import { fetchAllArchivedAlerts } from "../functions/kv-db/alerts-crud/archived-alerts/fetch-all-archived-alerts.ts";
 import { moveAlertToArchive } from "../functions/kv-db/alerts-crud/archived-alerts/move-alert-to-archive.ts";

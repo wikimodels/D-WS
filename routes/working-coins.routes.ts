@@ -4,14 +4,14 @@ import {
   addCoinsToWork,
   deleteAllCoinsFromWork,
   deleteCoinBatchFromWork,
-} from "../controllers/coins-at-work.conrtoller.ts";
+} from "../controllers/working-coins.conrtoller.ts";
 
 const router = express.Router();
 
 // Routes
 router.get("/coins/work", getAllCoinsAtWork);
-router.post("/coins/work/coin", addCoinsToWork);
-router.delete("/coins/work/all", deleteAllCoinsFromWork);
-router.delete("/coins/work/batch", deleteCoinBatchFromWork);
+router.post("/coins/work/add", addCoinsToWork);
+router.delete("/coins/work/delete/all", deleteAllCoinsFromWork);
+router.delete("/coins/work/delete/batch", deleteCoinBatchFromWork);
 
 export default router;

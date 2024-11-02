@@ -1,6 +1,5 @@
 import express from "npm:express@4.18.2";
 import {
-  archiveAlert,
   deleteAllArchivedAlerts,
   deleteArchivedAlertsBatch,
   getAllArchivedAlerts,
@@ -10,9 +9,8 @@ import {
 const router = express.Router();
 
 router.get("/archive/alerts", getAllArchivedAlerts);
-router.post("/archive/alert", archiveAlert);
-router.delete("/archive/alerts/batch", deleteArchivedAlertsBatch);
-router.delete("/archive/alerts/all", deleteAllArchivedAlerts);
-router.put("/archive/alert", updateArchivedAlert);
+router.delete("/archive/delete/batch", deleteArchivedAlertsBatch);
+router.get("/archive/delete/all", deleteAllArchivedAlerts);
+router.put("/archive/update/one", updateArchivedAlert);
 
 export default router;

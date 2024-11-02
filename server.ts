@@ -33,11 +33,11 @@ import { deleteAllArchivedAlertObjs } from "./functions/kv-db/alerts-crud/archiv
 import { getAllTriggeredAlertObjs } from "./functions/kv-db/alerts-crud/triggered-alerts/fetch-all-triggered-alert.ts";
 import { getKlineRepoStateLog } from "./functions/kv-db/ws-health/get-kline-repo-state-log.ts";
 import { cleanKlineRepoStateLog } from "./functions/kv-db/ws-health/clean-kline-repo-state-log.ts";
-import { getAllWorkingCoins } from "./functions/kv-db/coins-at-work/fetch-all-coins-at-work.ts";
-import { deleteAllWorkingCoins } from "./functions/kv-db/coins-at-work/remove-all-coins-from-work.ts";
+import { getAllWorkingCoins } from "./functions/kv-db/working-coins/fetch-all-coins-at-work.ts";
+import { deleteAllWorkingCoins } from "./functions/kv-db/working-coins/remove-all-coins-from-work.ts";
 import type { Coin } from "./models/shared/coin.ts";
-import { addWorkingCoins } from "./functions/kv-db/coins-at-work/contirbute-coins-to-work.ts";
-import { deleteWorkingCoinsBatch } from "./functions/kv-db/coins-at-work/remove-coin-Batch-from-work.ts";
+import { addWorkingCoins } from "./functions/kv-db/working-coins/contirbute-coins-to-work.ts";
+import { deleteWorkingCoinsBatch } from "./functions/kv-db/working-coins/remove-coin-Batch-from-work.ts";
 import { CoinRepository } from "./global/coins/coin-repository.ts";
 
 const { ORIGIN_I, ORIGIN_II } = await load();

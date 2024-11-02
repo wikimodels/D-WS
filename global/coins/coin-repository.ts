@@ -14,6 +14,7 @@ import {
   fetchBinanceKlineData,
   fetchBybitKlineData,
 } from "./coins-api-service.ts";
+import { DColors } from "../../models/shared/colors.ts";
 
 const { MONGO_DB, PROJECT_NAME } = await load();
 
@@ -30,6 +31,7 @@ export class CoinRepository {
   private static readonly dbName = "general";
   private static readonly collectionName = "coins";
   private static collection: Collection<Coin>;
+  private static readonly MONGO_DB = MONGO_DB;
 
   private constructor(coins: Coin[]) {
     this.coins = new Map(coins.map((coin) => [coin.symbol, coin]));
@@ -38,11 +40,12 @@ export class CoinRepository {
   public static async initializeFromDb(): Promise<void> {
     if (!CoinRepository.instance) {
       this.dbClient = new MongoClient();
-      await this.dbClient.connect(MONGO_DB);
+      await this.dbClient.connect(this.MONGO_DB);
       const db = this.dbClient.database(this.dbName);
       this.collection = db.collection<Coin>(this.collectionName);
       const coins = await this.fetchCoinsFromDb();
       CoinRepository.instance = new CoinRepository(coins);
+      console.log("%cCoinRepository ---> initialized...", DColors.cyan);
     }
   }
 
@@ -86,6 +89,26 @@ export class CoinRepository {
     return { inserted: false };
   }
 
+  public async addCoinArrayToDb(
+    coins: Coin[]
+  ): Promise<{ inserted: boolean; insertedIds?: number[] }> {
+    try {
+      // Insert multiple documents using insertMany
+      const res = await CoinRepository.collection.insertMany(coins);
+      // Convert insertedIds from the returned object to an array
+      const insertedIds = Object.values(res.insertedIds).map((id) =>
+        parseInt((id as Bson.ObjectId).toString(), 16)
+      );
+      // Refresh repository (if needed)
+      await this.refreshRepository();
+      console.log({ inserted: true, insertedIds });
+    } catch (error) {
+      console.error("Failed to insert coins:", error);
+    }
+
+    return { inserted: false };
+  }
+
   public async deleteCoinFromDb(
     symbol: string
   ): Promise<{ deleted: boolean; deletedCount?: number }> {
@@ -96,6 +119,29 @@ export class CoinRepository {
     if (deletedCount > 0) {
       return { deleted: true, deletedCount: deletedCount };
     }
+    return { deleted: false };
+  }
+
+  public async deleteCoinsFromDb(
+    symbols: string[]
+  ): Promise<{ deleted: boolean; deletedCount?: number }> {
+    try {
+      // Delete multiple documents based on an array of symbols
+      const deletedCount = await CoinRepository.collection.deleteMany({
+        symbol: { $in: symbols },
+      });
+
+      // Refresh the repository after deletion (if needed)
+      await this.refreshRepository();
+
+      // Check if any documents were deleted
+      if (deletedCount && deletedCount > 0) {
+        return { deleted: true, deletedCount };
+      }
+    } catch (error) {
+      console.error("Failed to delete coins:", error);
+    }
+
     return { deleted: false };
   }
 

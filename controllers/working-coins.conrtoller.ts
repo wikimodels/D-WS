@@ -1,8 +1,9 @@
 // deno-lint-ignore-file no-explicit-any
-import { contributeCoinsToWork } from "../functions/kv-db/coins-at-work/contirbute-coins-to-work.ts";
-import { fetchAllCoinsAtWork } from "../functions/kv-db/coins-at-work/fetch-all-coins-at-work.ts";
-import { removeAllCoinsFromWork } from "../functions/kv-db/coins-at-work/remove-all-coins-from-work.ts";
-import { removeCoinBatchFromWork } from "../functions/kv-db/coins-at-work/remove-coin-batch-from-work.ts";
+import { contributeCoinsToWork } from "../functions/kv-db/working-coins/contirbute-coins-to-work.ts";
+import { fetchAllCoinsAtWork } from "../functions/kv-db/working-coins/fetch-all-coins-at-work.ts";
+import { removeAllCoinsFromWork } from "../functions/kv-db/working-coins/remove-all-coins-from-work.ts";
+import { removeCoinBatchFromWork } from "../functions/kv-db/working-coins/remove-coin-batch-from-work.ts";
+
 import type { Coin } from "../models/shared/coin.ts";
 
 export const getAllCoinsAtWork = async (_req: any, res: any) => {
@@ -37,9 +38,9 @@ export const addCoinsToWork = async (req: any, res: any) => {
 };
 
 export const deleteCoinBatchFromWork = async (req: any, res: any) => {
-  const coins: Coin[] = req.body;
+  const symbols: string[] = req.body;
   try {
-    const response = await removeCoinBatchFromWork(coins);
+    const response = await removeCoinBatchFromWork(symbols);
     res.status(200).send(response);
   } catch (error) {
     console.error("Error deleting coin batch from work:", error);

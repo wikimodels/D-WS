@@ -7,14 +7,16 @@ import {
   modifyAlert,
   removeAlertBatch,
 } from "../controllers/alerts.controller.ts";
+import { archiveAlert } from "../controllers/archived-alerts.controller.ts";
 
 const router = express.Router();
 
 router.get("/alerts", getAllAlerts);
-router.post("/alerts/batch-create", addAlertBatch);
-router.post("/alerts", addAlert);
-router.delete("/alerts", removeAllAlerts);
+router.post("/alerts/create/batch", addAlertBatch);
+router.post("/alerts/create/one", addAlert);
+router.delete("/alerts/delete/all", removeAllAlerts);
+router.delete("/alerts/delete/batch", removeAlertBatch);
 router.put("/alerts/update", modifyAlert);
-router.delete("/alerts/batch-delete", removeAlertBatch);
+router.post("/alerts/archive", archiveAlert);
 
 export default router;
