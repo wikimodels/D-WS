@@ -1,3 +1,5 @@
+import type { Status } from "./status.ts";
+
 export interface Coin {
   santimentTicker?: string;
   slug?: string;

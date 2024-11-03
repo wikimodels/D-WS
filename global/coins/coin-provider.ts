@@ -13,9 +13,9 @@ import type { CoinGeckoId } from "../../models/shared/coin-gecko-id.ts";
 import { DColors } from "../../models/shared/colors.ts";
 import { Coin } from "./../../models/shared/coin.ts";
 import { CoinRepository } from "./coin-repository.ts";
-import { Exchange } from "../../models/shared/exchange.ts";
 import { SpaceNames } from "../../models/shared/space-names.ts";
 import { Status } from "../../models/shared/status.ts";
+import { designateCategories } from "./shared/designate-categories.ts";
 
 const {
   BYBIT_PERP_TICKETS_URL,
@@ -45,7 +45,7 @@ export class CoinProvider {
   private readonly COIN_GECKO_LIST = COIN_GECKO_LIST;
   private readonly COIN_GECKO_API_KEY = COIN_GECKO_API_KEY;
   private readonly COIN_GECKO_API = COIN_GECKO_API;
-  private readonly LOWEST_TURNOVER24H = LOWEST_TURNOVER24H;
+  private readonly LOWEST_TURNOVER24H = parseFloat(LOWEST_TURNOVER24H);
   private readonly SANTIMENT_API_URL = SANTIMENT_API_URL;
   private readonly SANTIMENT_API_KEY = SANTIMENT_API_KEY;
   private static MONGO_DB = MONGO_DB;
@@ -63,7 +63,10 @@ export class CoinProvider {
       this.collection = db.collection<Coin>(this.collectionName);
       const coins = await this.fetchCoinsFromDb();
       CoinProvider.instance = new CoinProvider(coins);
-      console.log("%cCoinProvder ---> initialized...", DColors.yellow);
+      console.log(
+        `%c${PROJECT_NAME}:CoinProvider ---> initialized...`,
+        DColors.yellow
+      );
     }
   }
 
@@ -84,23 +87,8 @@ export class CoinProvider {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  private assignCategory(coins: Coin[]) {
-    coins.forEach((c) => {
-      if (c.turnover24h > 200 * 1000 * 1000) {
-        c.category = "I";
-      } else if (c.turnover24h >= 100 * 1000 * 1000) {
-        c.category = "II";
-      } else if (c.turnover24h >= 50 * 1000 * 1000) {
-        c.category = "III";
-      } else if (c.turnover24h >= 10 * 1000 * 1000) {
-        c.category = "IV";
-      } else if (c.turnover24h >= 5 * 1000 * 1000) {
-        c.category = "V";
-      } else if (c.turnover24h >= parseFloat(this.LOWEST_TURNOVER24H)) {
-        c.category = "VI";
-      }
-    });
-    return coins;
+  private assignCategories(coins: Coin[], lowestTurnover24h: number) {
+    return designateCategories(coins, lowestTurnover24h);
   }
 
   private assignLinks(coins: Coin[]) {
@@ -423,7 +411,7 @@ export class CoinProvider {
         counter++;
       }
       await kv.close();
-      const msg = `${prefix}: deleted ${counter} object(s)`;
+      const msg = `${this.PROJECT}:${this.CLASS_NAME} ${prefix}: deleted ${counter} object(s)`;
       console.log(msg);
       return { deleted: counter };
     } catch (error) {
@@ -449,7 +437,7 @@ export class CoinProvider {
         counter++;
       }
       await kv.close();
-      const msg = `${prefix}: deleted ${counter} object(s)`;
+      const msg = `${this.PROJECT}:${this.CLASS_NAME} ${prefix}: deleted ${counter} object(s)`;
       console.log(msg);
       return { deleted: counter };
     } catch (error) {
@@ -477,11 +465,14 @@ export class CoinProvider {
       const data = await response.json();
 
       if (data && data.result && data.result.list) {
-        console.log("%cBybit Data ---> received...", DColors.cyan);
+        console.log(
+          `%c${this.PROJECT}:${this.CLASS_NAME} ---> Bybit Data received...`,
+          DColors.cyan
+        );
         return data.result.list
           .filter(
             (item: any) =>
-              parseFloat(item.turnover24h) > parseFloat(this.LOWEST_TURNOVER24H)
+              parseFloat(item.turnover24h) > this.LOWEST_TURNOVER24H
           )
           .map((item: any) => ({
             symbol: item.symbol,
@@ -515,12 +506,15 @@ export class CoinProvider {
       const data = await response.json();
 
       if (Array.isArray(data)) {
-        console.log("%cBinance Data ---> received...", DColors.magenta);
+        console.log(
+          `%c${this.PROJECT}:${this.CLASS_NAME} ---> Binance Data received...`,
+          DColors.magenta
+        );
         return data
           .filter(
             (item: any) =>
               item.symbol.endsWith("USDT") &&
-              parseFloat(item.quoteVolume) > parseFloat(this.LOWEST_TURNOVER24H)
+              parseFloat(item.quoteVolume) > this.LOWEST_TURNOVER24H
           )
           .map((item: any) => ({
             symbol: item.symbol,
@@ -581,7 +575,10 @@ export class CoinProvider {
   private async sortOutUniqueCoins(coins: Coin[]) {
     const coinRepo = CoinRepository.getInstance();
     const originCoins: Coin[] = await coinRepo.getAllCoins();
-    console.log("Origin Coins ---> ", originCoins.length);
+    console.log(
+      `${this.PROJECT}:${this.CLASS_NAME} Origin Coins ---> `,
+      originCoins.length
+    );
     const blackListCoins: Coin[] = await this.fetchCoinBlackList();
 
     const originSymbols = new Set(originCoins.map((coin: Coin) => coin.symbol));
@@ -594,7 +591,11 @@ export class CoinProvider {
         !originSymbols.has(item.symbol) && !blackListSymbols.has(item.symbol)
     );
     //TODO
-    console.log("SORTED COINS done ---> ", sortedCoins.length);
+    console.log(
+      `%c${this.PROJECT}:${this.CLASS_NAME} ---> SORTED COINS done `,
+      DColors.cyan,
+      sortedCoins.length
+    );
     return sortedCoins;
   }
 
@@ -658,7 +659,7 @@ export class CoinProvider {
 
       const data = await response.json();
       console.log(
-        "%cSantiment Data ---> received successfully...",
+        `%c${this.PROJECT}:${this.CLASS_NAME} ---> Santiment Data received successfully`,
         DColors.cyan
       );
       if (data.data.allProjects) {
@@ -680,7 +681,11 @@ export class CoinProvider {
   private async assignCoinGeckoIds(coins: Coin[]) {
     const coinGeckoMissing: Coin[] = [];
     //TODO;
-    console.log("UniqueCoins from AssingCoinGecko ", coins.length);
+    console.log(
+      `%c${this.PROJECT}:${this.CLASS_NAME} ---> Unique Coins from CoinGecko `,
+      DColors.magenta,
+      coins.length
+    );
     const coinGeckoIds: CoinGeckoId[] = await this.fetchCoinGeckoIds();
 
     const coinGeckoIdMap = new Map(
@@ -699,7 +704,8 @@ export class CoinProvider {
 
     await this.saveCoinGeckoMissing(coinGeckoMissing);
     console.log(
-      "CoinGecko Missing --> ",
+      `%c${this.PROJECT}:${this.CLASS_NAME} ---> CoinGecko Missing `,
+      DColors.white,
       coinGeckoMissing.map((c) => c.symbol)
     );
     return coins;
@@ -743,7 +749,8 @@ export class CoinProvider {
     // Log missing Santiment entries
     if (santimentMissing.length > 0) {
       console.log(
-        "Santiment Missing ---> ",
+        `%c${this.PROJECT}:${this.CLASS_NAME} ---> Santiment Missing `,
+        DColors.green,
         santimentMissing.map((s) => s.symbol)
       );
     }
@@ -759,56 +766,72 @@ export class CoinProvider {
     return coins;
   }
 
-  private async enrischWithCoinGeckoData(coins: Coin[]) {
+  private async enrichWithCoinGeckoData(coins: Coin[]): Promise<Coin[]> {
     for (const [index, coin] of coins.entries()) {
       await this.rateLimitDelay(2000);
       console.log(
-        `Enriching with CoinGecko Data --> ${index + 1} of ${coins.length}`
+        `${this.PROJECT}:${
+          this.CLASS_NAME
+        } ---> Enriching with CoinGecko Data ${index + 1} of ${coins.length}`
       );
+
       if (coin.coinGeckoId) {
         const url = `${this.COIN_GECKO_API}/coins/${coin.coinGeckoId}?x_cg_demo_api_key=${this.COIN_GECKO_API_KEY}`;
 
-        const response = await fetch(url);
-        const data = await response.json();
-        if (data.error) {
-          console.error(data.error);
+        try {
+          const response = await fetch(url);
+
+          // Check if the response is not okay
+          if (!response.ok) {
+            throw new Error(`Failed to fetch data: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+
+          // Check if CoinGecko returned an error
+          if (data.error) {
+            throw new Error(data.error);
+          }
+
+          // Update coin data with CoinGecko response
+          coin.market_cap_rank = data.market_cap_rank;
+          coin.market_cap_fdv_ratio = data.market_cap_fdv_ratio;
+          coin.facebook_likes = data.community_data?.facebook_likes;
+          coin.twitter_followers = data.community_data?.twitter_followers;
+          coin.reddit_subscribers = data.community_data?.reddit_subscribers;
+          coin.telegram_channel_user_count =
+            data.community_data?.telegram_channel_user_count;
+          coin.gh_forks = data.developer_data?.forks;
+          coin.gh_stars = data.developer_data?.stars;
+          coin.gh_subscribers = data.developer_data?.subscribers;
+          coin.gh_total_issues = data.developer_data?.total_issues;
+          coin.gh_closed_issues = data.developer_data?.closed_issues;
+          coin.gh_pull_requests_merged =
+            data.developer_data?.pull_requests_merged;
+          coin.gh_pull_request_contributors =
+            data.developer_data?.pull_request_contributors;
+          coin.gh_additions =
+            data.developer_data?.code_additions_deletions_4_weeks.additions;
+          coin.gh_deletions =
+            data.developer_data?.code_additions_deletions_4_weeks.deletions;
+          coin.gh_commit_count_4_weeks =
+            data.developer_data?.commit_count_4_weeks;
+          coin.image_url = data.image?.large;
+        } catch (error) {
+          // Log the error without stopping the loop
+          console.error(`Error fetching data for ${coin.symbol}:`, error);
           await notifyAboutFailedFunction(
             this.PROJECT,
             this.CLASS_NAME,
-            "enrischWithCoinGeckoData",
-            data.error
+            "enrichWithCoinGeckoData",
+            (error as Error).message
           );
-          return coins;
         }
-
-        coin.market_cap_rank = data.market_cap_rank;
-        coin.market_cap_fdv_ratio = data.market_cap_fdv_ratio;
-        coin.facebook_likes = data.community_data?.facebook_likes;
-        coin.twitter_followers = data.community_data?.twitter_followers;
-        coin.reddit_subscribers = data.community_data?.reddit_subscribers;
-        coin.telegram_channel_user_count =
-          data.community_data?.telegram_channel_user_count;
-        coin.gh_forks = data.developer_data?.forks;
-        coin.gh_stars = data.developer_data?.stars;
-        coin.gh_subscribers = data.developer_data?.subscribers;
-        coin.gh_total_issues = data.developer_data?.total_issues;
-        coin.gh_closed_issues = data.developer_data?.closed_issues;
-        coin.gh_pull_requests_merged =
-          data.developer_data?.pull_requests_merged;
-        coin.gh_pull_request_contributors =
-          data.developer_data?.pull_request_contributors;
-        coin.gh_additions =
-          data.developer_data?.code_additions_deletions_4_weeks.additions;
-        coin.gh_deletions =
-          data.developer_data?.code_additions_deletions_4_weeks.deletions;
-        coin.gh_commit_count_4_weeks =
-          data.developer_data?.commit_count_4_weeks;
-        coin.image_url = data.image?.large;
       }
     }
 
     console.log(
-      "%cUniqueCoins  ---> enriched with CoinGecko & Satiment...",
+      `%c${this.PROJECT}:${this.CLASS_NAME} UniqueCoins successfully enriched with CoinGecko & Santiment...`,
       DColors.yellow
     );
 
@@ -819,30 +842,65 @@ export class CoinProvider {
     const deletedRes = await this.deleteAllCoinsFromDb();
     const addedRes = await this.addCoinsToDb(coins);
     await this.refreshRepository();
-    console.log("%cFinal Saving: Clean Db Res ---> ", DColors.cyan, deletedRes);
     console.log(
-      "%cFinal Saving: Insertion into Db Res ---> ",
+      `%c${this.PROJECT}:${this.CLASS_NAME} ---> Final Saving: Clean Db Res `,
+      DColors.cyan,
+      deletedRes
+    );
+    console.log(
+      `%c${this.PROJECT}:${this.CLASS_NAME} ---> Final Saving: Insertion into Db Res `,
       DColors.green,
       addedRes
     );
   }
   // #endregion
 
+  // ✴️ #region BUSINESS LOGIC
+  public async moveSelectionToCoins(coins: Coin[]) {
+    try {
+      const symbols = coins.map((c) => c.symbol);
+      const coinRepo = CoinRepository.getInstance();
+      await coinRepo.addCoinsToDb(coins);
+      await this.deleteCoinsFromDb(symbols);
+      await this.refreshRepository();
+      return Object.values(this.uniqueCoins.values);
+    } catch (error) {
+      await notifyAboutFailedFunction(
+        this.PROJECT,
+        this.CLASS_NAME,
+        "moveSelectionToCoins",
+        error
+      );
+      return null;
+    }
+  }
+  // #endregion
+
   //----------------------------
   // ✅ REFRESHMENT PROCEDURE
   //----------------------------
-  private async runRefreshmentPocedure() {
-    let coins: Coin[] = [];
-    const binanceData = await this.fetchBinanceData();
-    const bybitData = await this.fetchBybitData();
-    coins = this.mergeData(binanceData, bybitData);
-    coins = await this.sortOutUniqueCoins(coins);
-    coins = await this.assignCoinGeckoIds(coins);
-    coins = await this.assignSantimentIds(coins);
-    coins = await this.enrischWithCoinGeckoData(coins);
-    coins = this.assignCategory(coins);
-    coins = this.assignLinks(coins);
-    await this.saveUniqueCoinsToDb(coins);
+  public async runRefreshmentPocedure() {
+    try {
+      let coins: Coin[] = [];
+      const binanceData = await this.fetchBinanceData();
+      const bybitData = await this.fetchBybitData();
+      coins = this.mergeData(binanceData, bybitData);
+      coins = await this.sortOutUniqueCoins(coins);
+      coins = await this.assignCoinGeckoIds(coins);
+      coins = await this.assignSantimentIds(coins);
+      coins = await this.enrichWithCoinGeckoData(coins);
+      coins = this.assignCategories(coins, this.LOWEST_TURNOVER24H);
+      coins = this.assignLinks(coins);
+      await this.saveUniqueCoinsToDb(coins);
+    } catch (error) {
+      console.log(error);
+      await notifyAboutFailedFunction(
+        this.PROJECT,
+        this.CLASS_NAME,
+        "runRefreshmentPocedure",
+        error
+      );
+    }
   }
   // Function to schedule data refresh every three days
   public scheduleRefresh() {

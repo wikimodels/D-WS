@@ -1,5 +1,4 @@
 // deno-lint-ignore-file no-explicit-any
-// coin-repository.ts
 import {
   MongoClient,
   Collection,
@@ -10,18 +9,45 @@ import type { Coin } from "../../models/shared/coin.ts";
 import { sendTgGeneralMessage } from "../../functions/tg/send-general-tg-msg.ts";
 import { formatFailedDataNotificationMsg } from "../../functions/tg/formatters/coin-msg/failed-data-notification.ts";
 import { formatFailedUpdatesNotificationMsg } from "../../functions/tg/formatters/coin-msg/failed-updates-notification.ts";
-import {
-  fetchBinanceKlineData,
-  fetchBybitKlineData,
-} from "./coins-api-service.ts";
-import { DColors } from "../../models/shared/colors.ts";
 
-const { MONGO_DB, PROJECT_NAME } = await load();
+import { DColors } from "../../models/shared/colors.ts";
+import { notifyAboutFailedFunction } from "../../functions/tg/notifications/failed-function.ts";
+import { designateCategories } from "./shared/designate-categories.ts";
+
+const {
+  MONGO_DB,
+  PROJECT_NAME,
+  BYBIT_FUTURES_KLINE,
+  BINANCE_FUTURES_KLINE,
+  LOWEST_TURNOVER24H,
+} = await load();
 
 type SuccessfulResult = {
   success: true;
   symbol: string;
   data: { symbol: string; turnover24h: number };
+};
+
+type FailedResult = {
+  symbol: string;
+  error: any;
+};
+
+type Result = {
+  success: boolean;
+  symbol: string;
+  data?: any;
+  error?: string;
+};
+
+type KlineData = {
+  symbol: string;
+  turnover24h: number;
+};
+
+type Updates = {
+  successfullUpdates: string[];
+  failedUpdates: string[];
 };
 
 export class CoinRepository {
@@ -32,7 +58,13 @@ export class CoinRepository {
   private static readonly collectionName = "coins";
   private static collection: Collection<Coin>;
   private static readonly MONGO_DB = MONGO_DB;
+  private readonly PROJECT_NAME = PROJECT_NAME;
+  private readonly CLASS_NAME = "CoinRepository";
+  private readonly BYBIT_FUTURES_KLINE = BYBIT_FUTURES_KLINE;
+  private readonly BINANCE_FUTURES_KLINE = BINANCE_FUTURES_KLINE;
+  private readonly LOWEST_TURNOVER24H = parseFloat(LOWEST_TURNOVER24H);
 
+  // #region UTILS
   private constructor(coins: Coin[]) {
     this.coins = new Map(coins.map((coin) => [coin.symbol, coin]));
   }
@@ -56,95 +88,6 @@ export class CoinRepository {
     return CoinRepository.instance;
   }
 
-  private static fetchCoinsFromDb(): Promise<Coin[]> {
-    return this.collection.find({}).toArray();
-  }
-
-  public async updateCoinInDb(
-    symbol: string,
-    updatedData: Partial<Coin>
-  ): Promise<{ modified: boolean; modifiedCount?: number }> {
-    const { modifiedCount } = await CoinRepository.collection.updateOne(
-      { symbol },
-      { $set: updatedData }
-    );
-    await this.refreshRepository();
-    if (modifiedCount > 0) {
-      return { modified: true, modifiedCount: modifiedCount };
-    }
-    return { modified: false };
-  }
-
-  public async addCoinToDb(
-    newCoin: Coin
-  ): Promise<{ inserted: boolean; insertedId?: number }> {
-    const res = (await CoinRepository.collection.insertOne(
-      newCoin
-    )) as Bson.ObjectId | null;
-
-    await this.refreshRepository();
-    if (res) {
-      return { inserted: true, insertedId: parseInt(res.toJSON()) };
-    }
-    return { inserted: false };
-  }
-
-  public async addCoinArrayToDb(
-    coins: Coin[]
-  ): Promise<{ inserted: boolean; insertedIds?: number[] }> {
-    try {
-      // Insert multiple documents using insertMany
-      const res = await CoinRepository.collection.insertMany(coins);
-      // Convert insertedIds from the returned object to an array
-      const insertedIds = Object.values(res.insertedIds).map((id) =>
-        parseInt((id as Bson.ObjectId).toString(), 16)
-      );
-      // Refresh repository (if needed)
-      await this.refreshRepository();
-      console.log({ inserted: true, insertedIds });
-    } catch (error) {
-      console.error("Failed to insert coins:", error);
-    }
-
-    return { inserted: false };
-  }
-
-  public async deleteCoinFromDb(
-    symbol: string
-  ): Promise<{ deleted: boolean; deletedCount?: number }> {
-    const { deletedCount } = (await CoinRepository.collection.deleteOne({
-      symbol,
-    })) as unknown as { deletedCount: number };
-    await this.refreshRepository();
-    if (deletedCount > 0) {
-      return { deleted: true, deletedCount: deletedCount };
-    }
-    return { deleted: false };
-  }
-
-  public async deleteCoinsFromDb(
-    symbols: string[]
-  ): Promise<{ deleted: boolean; deletedCount?: number }> {
-    try {
-      // Delete multiple documents based on an array of symbols
-      const deletedCount = await CoinRepository.collection.deleteMany({
-        symbol: { $in: symbols },
-      });
-
-      // Refresh the repository after deletion (if needed)
-      await this.refreshRepository();
-
-      // Check if any documents were deleted
-      if (deletedCount && deletedCount > 0) {
-        return { deleted: true, deletedCount };
-      }
-    } catch (error) {
-      console.error("Failed to delete coins:", error);
-    }
-
-    return { deleted: false };
-  }
-
   private async refreshRepository(): Promise<void> {
     const coins = await CoinRepository.fetchCoinsFromDb();
     this.coins = new Map(coins.map((coin) => [coin.symbol, coin]));
@@ -166,191 +109,396 @@ export class CoinRepository {
     );
   }
 
-  //UPDATE BINANCE COIN CATEGORIES
-  public async updateAllBinanceCoinCategories(
-    interval = "1d",
-    limit = 1
-  ): Promise<{ successfulUpdates: string[]; failedUpdates: string[] }> {
-    const binanceCoins = this.getAllCoins()
-      .filter((c) => c.exchange === "bi" || c.exchange == "biby")
-      .slice(0, 2);
-
-    const { successfulData, failedData } = await this.fetchBiKlineDataForCoins(
-      binanceCoins,
-      interval,
-      limit
+  private async sendFailedUpdatesNotification(
+    projectName: string,
+    className: string,
+    fnName: string,
+    data: string[]
+  ) {
+    const errorMsg = formatFailedUpdatesNotificationMsg(
+      projectName,
+      className,
+      fnName,
+      data
     );
-
-    //SEND NOTIFICAION
-    if (failedData.length > 0) {
-      this.sendFailedDataNotification(
-        failedData,
-        "updateAllBinanceCoinCategories",
-        PROJECT_NAME
-      );
-    }
-
-    const turnover24hData = successfulData.map(
-      ({ symbol, data: { turnover24h } }) => ({
-        symbol,
-        turnover24h,
-      })
-    );
-
-    this.updateCoinCategories(binanceCoins, turnover24hData);
-    const { successfulUpdates, failedUpdates } =
-      await this.saveUpdatedCategories(binanceCoins);
-
-    await this.refreshRepository();
-    if (failedUpdates.length > 0) {
-      this.sendFailedUpdatesNotification(
-        failedUpdates,
-        "updateAllBinanceCoinCategories",
-        PROJECT_NAME
-      );
-    }
-    return { successfulUpdates, failedUpdates };
+    await sendTgGeneralMessage(errorMsg);
   }
 
-  //UPDATE BYBIT COIN CATEGORIES
-  public async updateAllBybitCoinCategories(
-    interval = "D",
-    limit = 1
-  ): Promise<{ successfulUpdates: string[]; failedUpdates: string[] }> {
-    const bybitCoins = this.getAllCoins().filter((c) => c.exchange === "by");
-    const { successfulData, failedData } = await this.fetchByKlineDataForCoins(
-      bybitCoins,
-      interval,
-      limit
+  private async sendFailedDataNotification(
+    projectName: string,
+    className: string,
+    fnName: string,
+    symbols: string[]
+  ) {
+    const errorMsg = formatFailedDataNotificationMsg(
+      projectName,
+      className,
+      fnName,
+      symbols
     );
-
-    //SEND NOTIFICAION
-    if (failedData.length > 0) {
-      this.sendFailedDataNotification(
-        failedData,
-        "updateAllBybitCoinCategories",
-        PROJECT_NAME
-      );
-    }
-
-    const turnover24hData = successfulData.map(
-      ({ symbol, data: { turnover24h } }) => ({
-        symbol,
-        turnover24h,
-      })
-    );
-
-    this.updateCoinCategories(bybitCoins, turnover24hData);
-    const { successfulUpdates, failedUpdates } =
-      await this.saveUpdatedCategories(bybitCoins);
-
-    await this.refreshRepository();
-    if (failedUpdates.length > 0) {
-      this.sendFailedUpdatesNotification(
-        failedUpdates,
-        "updateAllBybitCoinCategories",
-        PROJECT_NAME
-      );
-    }
-    return { successfulUpdates, failedUpdates };
+    await sendTgGeneralMessage(errorMsg);
   }
 
-  private async fetchByKlineDataForCoins(
-    coins: Coin[],
-    interval: string,
-    limit: number
-  ): Promise<{ successfulData: SuccessfulResult[]; failedData: any[] }> {
-    const klinePromises = coins.map(async (coin) => {
-      try {
-        const data = await this.fetchByKlineData(coin.symbol, interval, limit);
-        return { success: true, symbol: coin.symbol, data };
-      } catch (error) {
-        console.error(`Failed to fetch kline for ${coin.symbol}:`, error);
-        return {
-          success: false,
-          symbol: coin.symbol,
-          error: (error as Error).message,
-        };
+  private assignCategories(coins: Coin[], lowestTurnover24h: number) {
+    return designateCategories(coins, lowestTurnover24h);
+  }
+
+  // #endregion
+
+  // #region MONGO DB OPERATIONS
+  private static async fetchCoinsFromDb(): Promise<Coin[]> {
+    try {
+      return await this.collection.find({}).toArray();
+    } catch (error) {
+      await notifyAboutFailedFunction(
+        "D-WS",
+        "CoinRepository",
+        "fetchCoinsFromDb",
+        error
+      );
+      console.error("Error in fetchCoinsFromDb:", error);
+      throw new Error("Failed to fetch coins from the database");
+    }
+  }
+
+  public async updateCoinInDb(
+    symbol: string,
+    updatedData: Partial<Coin>
+  ): Promise<{ modified: boolean; modifiedCount?: number }> {
+    try {
+      // Attempt to update the coin in the database
+      const { modifiedCount } = await CoinRepository.collection.updateOne(
+        { symbol },
+        { $set: updatedData }
+      );
+
+      // Refresh the repository after updating the database
+      await this.refreshRepository();
+
+      // Return success response if any documents were modified
+      if (modifiedCount > 0) {
+        return { modified: true, modifiedCount };
+      } else {
+        return { modified: false, modifiedCount: 0 };
       }
-    });
-
-    const responseData = await Promise.all(klinePromises);
-    return {
-      successfulData: responseData.filter(
-        (result) => result.success
-      ) as SuccessfulResult[],
-      failedData: responseData.filter((result) => !result.success),
-    };
+    } catch (error) {
+      // Log the error with context information
+      console.error("Error in updateCoinInDb:", error);
+      await notifyAboutFailedFunction(
+        this.PROJECT_NAME,
+        this.CLASS_NAME,
+        "updateCoinInDb",
+        error
+      );
+      // Rethrow the error so that the calling code can handle it
+      throw new Error("Failed to update coin in the database");
+    }
   }
 
-  private async fetchBiKlineDataForCoins(
-    coins: Coin[],
-    interval: string,
-    limit: number
-  ): Promise<{ successfulData: SuccessfulResult[]; failedData: any[] }> {
-    const klinePromises = coins.map(async (coin) => {
-      try {
-        const data = await this.fetchBiKlineData(coin.symbol, interval, limit);
-
-        return { success: true, symbol: coin.symbol, data };
-      } catch (error) {
-        console.error(`Failed to fetch kline for ${coin.symbol}:`, error);
-        return {
-          success: false,
-          symbol: coin.symbol,
-          error: (error as Error).message,
-        };
+  public async addCoinToDb(
+    newCoin: Coin
+  ): Promise<{ inserted: boolean; insertedId?: number }> {
+    try {
+      const res = (await CoinRepository.collection.insertOne(
+        newCoin
+      )) as Bson.ObjectId | null;
+      await this.refreshRepository();
+      if (res) {
+        return { inserted: true, insertedId: parseInt(res.toJSON()) };
+      } else {
+        return { inserted: false };
       }
-    });
-
-    const responseData = await Promise.all(klinePromises);
-    return {
-      successfulData: responseData.filter(
-        (result) => result.success
-      ) as SuccessfulResult[],
-      failedData: responseData.filter((result) => !result.success),
-    };
+    } catch (error) {
+      console.error("Error in addCoinToDb:", error);
+      await notifyAboutFailedFunction(
+        this.PROJECT_NAME,
+        this.CLASS_NAME,
+        "addCoinToDb",
+        error
+      );
+      throw new Error("Failed to add coin to the database");
+    }
   }
 
-  private async saveUpdatedCategories(
+  public async addCoinsToDb(
     coins: Coin[]
-  ): Promise<{ successfulUpdates: string[]; failedUpdates: string[] }> {
-    const successfulUpdates: string[] = [];
-    const failedUpdates: string[] = [];
+  ): Promise<{ inserted: boolean; insertedIdsCount?: number }> {
+    try {
+      const res = await CoinRepository.collection.insertMany(coins);
+      const insertedIds = Object.values(res.insertedIds).map((id) =>
+        parseInt((id as Bson.ObjectId).toString(), 16)
+      );
+      await this.refreshRepository();
 
-    for (const coin of coins) {
-      try {
-        await this.updateCoinInDb(coin.symbol, {
-          category: coin.category,
-          turnover24h: coin.turnover24h,
-        });
-        successfulUpdates.push(coin.symbol);
-      } catch (error) {
-        console.error(
-          `Failed to update category in DB for ${coin.symbol}:`,
-          error
-        );
-        failedUpdates.push(coin.symbol);
-      }
+      console.log({ inserted: true, insertedIds });
+      return { inserted: true, insertedIdsCount: insertedIds.length };
+    } catch (error) {
+      // Log the error with contextual information
+      console.error("Failed to insert coins in addCoinsToDb:", error);
+
+      // Optionally, notify monitoring system about the failed operation
+      await notifyAboutFailedFunction(
+        this.PROJECT_NAME,
+        this.CLASS_NAME,
+        "addCoinsToDb",
+        error
+      );
+
+      // Return failure result
+      return { inserted: false };
     }
-
-    return { successfulUpdates, failedUpdates };
   }
 
-  private async fetchByKlineData(
+  public async deleteCoinFromDb(
+    symbol: string
+  ): Promise<{ deleted: boolean; deletedCount?: number }> {
+    try {
+      const deletedCount = await CoinRepository.collection.deleteOne({
+        symbol,
+      });
+      await this.refreshRepository();
+
+      if (deletedCount > 0) {
+        return { deleted: true, deletedCount };
+      } else {
+        return { deleted: true };
+      }
+    } catch (error) {
+      console.error("Error in deleteCoinFromDb:", error);
+
+      await notifyAboutFailedFunction(
+        this.PROJECT_NAME,
+        this.CLASS_NAME,
+        "deleteCoinFromDb",
+        error
+      );
+      return { deleted: false };
+    }
+  }
+
+  public async deleteCoinsFromDb(
+    symbols: string[]
+  ): Promise<{ deleted: boolean; deletedCount?: number }> {
+    try {
+      // Delete multiple documents based on an array of symbols
+      const deletedCount = await CoinRepository.collection.deleteMany({
+        symbol: { $in: symbols },
+      });
+
+      // Refresh the repository after deletion (if needed)
+      await this.refreshRepository();
+
+      // Check if any documents were deleted
+      if (deletedCount && deletedCount > 0) {
+        return { deleted: true, deletedCount };
+      } else {
+        return { deleted: true };
+      }
+    } catch (error) {
+      console.error("Failed to delete coins:", error);
+      await notifyAboutFailedFunction(
+        this.PROJECT_NAME,
+        this.CLASS_NAME,
+        "deleteCoinFromDb",
+        error
+      );
+      return { deleted: false };
+    }
+  }
+  // #endregion
+
+  // #region TURNOVER24H UDPDATE FUNCTIONS
+
+  private async fetchBybitKlineData(
     symbol: string,
     interval: string,
     limit: number
-  ): Promise<{ symbol: string; turnover24h: number }> {
-    return await fetchBybitKlineData(symbol, interval, limit);
+  ): Promise<KlineData> {
+    try {
+      const response = await fetch(
+        `${this.BYBIT_FUTURES_KLINE}?category=linear&symbol=${symbol}&interval=${interval}&limit=${limit}`
+      );
+
+      // Check if response is successful
+      if (!response.ok) {
+        throw new Error(
+          `${this.PROJECT_NAME}:${this.CLASS_NAME}:${symbol} ---> Failed to fetch Bybit kline data: ${response.status} ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+
+      // Check if Bybit's response contains the expected "OK" message
+      if (data.retMsg !== "OK") {
+        throw new Error(
+          `${this.PROJECT_NAME}:${this.CLASS_NAME}:${symbol}---> Unexpected response from Bybit: ${data.retMsg}`
+        );
+      }
+
+      // Validate that data structure is as expected before accessing it
+      if (
+        !data.result ||
+        !data.result.list ||
+        !data.result.list[0] ||
+        data.result.list[0][6] === undefined
+      ) {
+        throw new Error(
+          "Bybit kline data format is invalid or missing expected fields"
+        );
+      }
+
+      // Return the parsed kline data
+      return {
+        symbol: data.result.symbol,
+        turnover24h: data.result.list[0][6],
+      };
+    } catch (error) {
+      // Log the error with additional context
+      console.error("Error in fetchBybitKlineData:", error);
+
+      await notifyAboutFailedFunction(
+        this.PROJECT_NAME,
+        this.CLASS_NAME + `:${symbol}`,
+        "fetchBybitKlineData",
+        error
+      );
+
+      // Rethrow the error to allow calling code to handle it
+      throw new Error(
+        `${this.PROJECT_NAME}:${this.CLASS_NAME}:${symbol} ---> Failed to fetch and process Bybit kline data for ${symbol}`
+      );
+    }
   }
 
-  private async fetchBiKlineData(
+  private async fetchBinanceKlineData(
     symbol: string,
     interval: string,
     limit: number
-  ): Promise<{ symbol: string; turnover24h: number }> {
-    return await fetchBinanceKlineData(symbol, interval, limit);
+  ): Promise<KlineData> {
+    try {
+      const url = `${this.BINANCE_FUTURES_KLINE}?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+      const response = await fetch(url);
+
+      // Check if response is successful
+      if (!response.ok) {
+        throw new Error(
+          `${this.PROJECT_NAME}:${this.CLASS_NAME}:${symbol} ---> Failed to fetch Binance kline data: ${response.status} ${response.statusText} ${url}`
+        );
+      }
+
+      const data = await response.json();
+
+      // Validate data structure to ensure expected format
+      if (
+        !Array.isArray(data) ||
+        !data[0] ||
+        typeof data[0][7] === "undefined"
+      ) {
+        throw new Error(
+          "Binance kline data format is invalid or missing expected fields"
+        );
+      }
+
+      // Return the parsed kline data, converting turnover24h to a float
+      return { symbol, turnover24h: parseFloat(data[0][7]) };
+    } catch (error) {
+      // Log the error with additional context
+      console.error(
+        `${this.PROJECT_NAME}:${this.CLASS_NAME}:${symbol}---> Error in fetchBinanceKlineData:`,
+        error
+      );
+
+      await notifyAboutFailedFunction(
+        this.PROJECT_NAME,
+        this.CLASS_NAME + `:${symbol}`,
+        "fetchBinanceKlineData",
+        error
+      );
+      // Rethrow the error to allow calling code to handle it
+      throw new Error(
+        `${this.PROJECT_NAME}:${this.CLASS_NAME}:${symbol} ---> Failed to fetch and process Bybit kline data for ${symbol}`
+      );
+    }
+  }
+
+  private createBinanceKlinePromises(
+    coins: Coin[],
+    interval: string,
+    limit: number
+  ): Promise<Result>[] {
+    return coins.map(async (coin) => {
+      try {
+        const data = await this.fetchBinanceKlineData(
+          coin.symbol,
+          interval,
+          limit
+        );
+        return { success: true, symbol: coin.symbol, data };
+      } catch (error) {
+        console.error(`Failed to fetch kline for ${coin.symbol}:`, error);
+        return {
+          success: false,
+          symbol: coin.symbol,
+          error: (error as Error).message,
+        };
+      }
+    });
+  }
+
+  private createBybitKlinePromises(
+    coins: Coin[],
+    interval: string,
+    limit: number
+  ): Promise<Result>[] {
+    return coins.map(async (coin) => {
+      try {
+        const data = await this.fetchBybitKlineData(
+          coin.symbol,
+          interval,
+          limit
+        );
+        return { success: true, symbol: coin.symbol, data };
+      } catch (error) {
+        console.error(`Failed to fetch kline for ${coin.symbol}:`, error);
+        return {
+          success: false,
+          symbol: coin.symbol,
+          error: (error as Error).message,
+        };
+      }
+    });
+  }
+
+  private async runPromiseBatch(promises: Promise<Result>[]): Promise<{
+    successfulData: SuccessfulResult[];
+    failedData: FailedResult[];
+  }> {
+    // Execute all promises
+    const results = await Promise.all(promises);
+
+    // Separate successful and failed results
+    const successfulData = results
+      .filter((result) => result.success)
+      .map((result) => ({
+        symbol: result.symbol,
+        data: result.data,
+      })) as SuccessfulResult[];
+
+    const failedData = results
+      .filter((result) => !result.success)
+      .map((result) => ({
+        symbol: result.symbol,
+        error: result.error,
+      }));
+
+    return { successfulData, failedData };
+  }
+
+  private getTurnover24Data(successfulData: any[]) {
+    return successfulData.map(({ symbol, data: { turnover24h } }) => ({
+      symbol,
+      turnover24h,
+    }));
   }
 
   private updateCoinCategories(
@@ -360,39 +508,154 @@ export class CoinRepository {
     coins.forEach((c) => {
       const turnoverData = turnover24hs.find((t) => t.symbol === c.symbol);
       if (turnoverData) {
-        c.category = this.assignCategory(turnoverData.turnover24h);
         c.turnover24h = turnoverData.turnover24h;
       }
     });
+    return coins;
   }
 
-  private assignCategory(turnover24h: number): string {
-    if (turnover24h > 200 * 1000 * 1000) return "I";
-    if (turnover24h >= 100 * 1000 * 1000) return "II";
-    if (turnover24h >= 50 * 1000 * 1000) return "III";
-    if (turnover24h >= 10 * 1000 * 1000) return "IV";
-    return "V";
+  private async saveUpdatedCategories(coins: Coin[]): Promise<Updates> {
+    const successfullUpdates: string[] = [];
+    const failedUpdates: string[] = [];
+
+    for (const coin of coins) {
+      try {
+        await this.updateCoinInDb(coin.symbol, {
+          category: coin.category,
+          turnover24h: coin.turnover24h,
+        });
+        successfullUpdates.push(coin.symbol);
+      } catch (error) {
+        console.error(
+          `Failed to update category in DB for ${coin.symbol}:`,
+          error
+        );
+        failedUpdates.push(coin.symbol);
+      }
+    }
+
+    return { successfullUpdates, failedUpdates };
   }
 
-  private async sendFailedUpdatesNotification(
-    data: string[],
-    fnName: string,
-    projectName: string
+  // #endregion
+
+  // #region ✅ BINANCE TURNOVER24H UPDATE
+
+  public async runBinanceTurnover24hUpdate(
+    coins: Coin[],
+    interval: string,
+    limit: number
   ) {
-    const errorMsg = formatFailedUpdatesNotificationMsg(
-      data,
-      fnName,
-      projectName
+    const binancePromises = this.createBinanceKlinePromises(
+      coins,
+      interval,
+      limit
     );
-    await sendTgGeneralMessage(errorMsg);
-  }
+    const result = await this.runPromiseBatch(binancePromises);
+    const turnover24hData = this.getTurnover24Data(result.successfulData);
+    coins = this.updateCoinCategories(coins, turnover24hData);
+    coins = this.assignCategories(coins, this.LOWEST_TURNOVER24H);
+    const updates = await this.saveUpdatedCategories(coins);
 
-  private async sendFailedDataNotification(
-    data: { success: boolean; symbol: string; error: string }[],
-    fnName: string,
-    projectName: string
+    if (result.failedData.length > 0) {
+      const symbols = result.failedData.map((d) => d.symbol);
+      this.sendFailedDataNotification(
+        this.PROJECT_NAME,
+        this.CLASS_NAME,
+        "runBinanceTurnover24hUpdate",
+        symbols
+      );
+    }
+    if (updates.failedUpdates.length > 0) {
+      this.sendFailedUpdatesNotification(
+        this.PROJECT_NAME,
+        this.CLASS_NAME,
+        "runBinanceTurnover24hUpdate",
+        updates.failedUpdates
+      );
+    }
+    console.log(
+      `%c${this.PROJECT_NAME}:${this.CLASS_NAME} ---> Binance Successfull Kline Fetch: ${result.successfulData.length}`,
+      DColors.cyan
+    );
+    console.log(
+      `%c${this.PROJECT_NAME}:${this.CLASS_NAME} ---> Binance Successfull Turnover24h Updates: ${updates.successfullUpdates.length}`,
+      DColors.green
+    );
+  }
+  // #endregion
+
+  // #region ✅ BYBIT TURNOVER UPDATE
+
+  public async runBybitTurnover24hUpdate(
+    coins: Coin[],
+    interval: string,
+    limit: number
   ) {
-    const errorMsg = formatFailedDataNotificationMsg(data, fnName, projectName);
-    await sendTgGeneralMessage(errorMsg);
+    const bybitPromises = this.createBybitKlinePromises(coins, interval, limit);
+    const result = await this.runPromiseBatch(bybitPromises);
+    const turnover24hData = this.getTurnover24Data(result.successfulData);
+    coins = this.updateCoinCategories(coins, turnover24hData);
+    coins = this.assignCategories(coins, this.LOWEST_TURNOVER24H);
+    const updates = await this.saveUpdatedCategories(coins);
+
+    if (result.failedData.length > 0) {
+      const symbols = result.failedData.map((d) => d.symbol);
+      this.sendFailedDataNotification(
+        this.PROJECT_NAME,
+        this.CLASS_NAME,
+        "runBybitTurnover24hUpdate",
+        symbols
+      );
+    }
+    if (updates.failedUpdates.length > 0) {
+      this.sendFailedUpdatesNotification(
+        this.PROJECT_NAME,
+        this.CLASS_NAME,
+        "runBybitTurnover24hUpdate",
+        updates.failedUpdates
+      );
+    }
+    console.log(
+      `%c${this.PROJECT_NAME}:${this.CLASS_NAME} ---> Bybit Successfull Kline Fetch: ${result.successfulData.length}`,
+      DColors.cyan
+    );
+    console.log(
+      `%c${this.PROJECT_NAME}:${this.CLASS_NAME} ---> Bybit Successfull Turnover24h Updates: ${updates.successfullUpdates.length}`,
+      DColors.green
+    );
+  }
+  // #endregion
+
+  // #region UPDATE PROCEDURE
+  public async runTurnover24hUpdatePocedure() {
+    try {
+      const binanceCoins = this.getBinanceCoins();
+      const bybitCoins = this.getBybitCoins();
+      await this.runBinanceTurnover24hUpdate(binanceCoins, "1d", 1);
+      await this.runBybitTurnover24hUpdate(bybitCoins, "D", 1);
+      console.log(
+        "%cTurnover24h Update Procedure ---> successfully done...",
+        DColors.magenta
+      );
+    } catch (error) {
+      console.log(error);
+      await notifyAboutFailedFunction(
+        this.PROJECT_NAME,
+        this.CLASS_NAME,
+        "runTurnover24hUpdatePocedure",
+        error
+      );
+    }
+  }
+  // #endregion
+
+  // Function to schedule data refresh every three days
+  public scheduleRefresh() {
+    this.runTurnover24hUpdatePocedure().then(() => {
+      setInterval(async () => {
+        await this.runTurnover24hUpdatePocedure();
+      }, 20 * 24 * 60 * 60 * 1000); // 3 days in milliseconds
+    });
   }
 }
