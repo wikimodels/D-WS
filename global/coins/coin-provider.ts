@@ -12,10 +12,10 @@ import type { SantimentId } from "../../models/shared/santiment-id.ts";
 import type { CoinGeckoId } from "../../models/shared/coin-gecko-id.ts";
 import { DColors } from "../../models/shared/colors.ts";
 import { Coin } from "./../../models/shared/coin.ts";
-import { CoinRepository } from "./coin-repository.ts";
 import { SpaceNames } from "../../models/shared/space-names.ts";
 import { Status } from "../../models/shared/status.ts";
 import { designateCategories } from "./shared/designate-categories.ts";
+import { notifyAboutCoinsRefresh } from "../../functions/tg/notifications/coin-refresh.ts";
 
 const {
   BYBIT_PERP_TICKETS_URL,
@@ -34,9 +34,10 @@ export class CoinProvider {
   private static instance: CoinProvider;
   private uniqueCoins: Map<string, Coin> = new Map();
   private static dbClient: MongoClient;
-  private static collection: Collection<Coin>;
-  private static readonly dbName = "general";
-  private static readonly collectionName = "coin-provider";
+  private static providerCollection: Collection<Coin>;
+  private static basicCollection: Collection<Coin>;
+  //private static readonly dbName = "general";
+  //private static readonly providerCollectionName = "coin-provider";
 
   private readonly BYBIT_API_URL = BYBIT_PERP_TICKETS_URL;
   private readonly BINANCE_API_URL = BINANCE_PERP_TICKETS_URL;
@@ -59,10 +60,11 @@ export class CoinProvider {
     if (!CoinProvider.instance) {
       this.dbClient = new MongoClient();
       await this.dbClient.connect(this.MONGO_DB);
-      const db = this.dbClient.database(this.dbName);
-      this.collection = db.collection<Coin>(this.collectionName);
-      const coins = await this.fetchCoinsFromDb();
-      CoinProvider.instance = new CoinProvider(coins);
+      const db = this.dbClient.database("general");
+      this.providerCollection = db.collection<Coin>("coin-provider");
+      this.basicCollection = db.collection<Coin>("coins");
+      const providerCoins = await this.fetchCoinsFromDb();
+      CoinProvider.instance = new CoinProvider(providerCoins);
       console.log(
         `%c${PROJECT_NAME}:CoinProvider ---> initialized...`,
         DColors.yellow
@@ -128,7 +130,7 @@ export class CoinProvider {
   private static async fetchCoinsFromDb(): Promise<Coin[]> {
     try {
       // Attempt to fetch all coins from the database
-      return await this.collection.find({}).toArray();
+      return await this.providerCollection.find({}).toArray();
     } catch (error) {
       console.error("Failed to fetch coins from the database:", error);
 
@@ -143,12 +145,30 @@ export class CoinProvider {
     }
   }
 
+  private static async fetchOriginCoinsFromDb(): Promise<Coin[]> {
+    try {
+      // Attempt to fetch all coins from the database
+      return await this.basicCollection.find({}).toArray();
+    } catch (error) {
+      console.error("Failed to fetch coins from the database:", error);
+
+      await notifyAboutFailedFunction(
+        "D-WS",
+        "CoinProvider",
+        "fetchBasicCoinsFromDb",
+        error
+      );
+
+      return [];
+    }
+  }
+
   public async addCoinToDb(
     newCoin: Coin
   ): Promise<{ inserted: boolean; insertedId?: string }> {
     try {
       // Attempt to insert the new coin into the database
-      const res = (await CoinProvider.collection.insertOne(
+      const res = (await CoinProvider.providerCollection.insertOne(
         newCoin
       )) as Bson.ObjectId | null;
 
@@ -181,12 +201,35 @@ export class CoinProvider {
   ): Promise<{ inserted: boolean; insertedCount?: number }> {
     try {
       // Insert multiple documents using insertMany
-      const res = await CoinProvider.collection.insertMany(coins);
+      const res = await CoinProvider.providerCollection.insertMany(coins);
       // Convert insertedIds from the returned object to an array
       const insertedIds = Object.values(res.insertedIds).map((id) =>
         (id as Bson.ObjectId).toString()
       );
 
+      return { inserted: true, insertedCount: insertedIds.length };
+    } catch (error) {
+      console.error("Failed to insert coins:", error);
+      await notifyAboutFailedFunction(
+        this.PROJECT,
+        this.CLASS_NAME,
+        "addCoinsToDb",
+        error
+      );
+      return { inserted: false };
+    }
+  }
+
+  public async addCoinsToCoinsDb(
+    coins: Coin[]
+  ): Promise<{ inserted: boolean; insertedCount?: number }> {
+    try {
+      // Insert multiple documents using insertMany
+      const res = await CoinProvider.basicCollection.insertMany(coins);
+      // Convert insertedIds from the returned object to an array
+      const insertedIds = Object.values(res.insertedIds).map((id) =>
+        (id as Bson.ObjectId).toString()
+      );
       return { inserted: true, insertedCount: insertedIds.length };
     } catch (error) {
       console.error("Failed to insert coins:", error);
@@ -206,7 +249,7 @@ export class CoinProvider {
   }> {
     try {
       // Attempt to delete the coin with the specified symbol
-      const deletedCount = (await CoinProvider.collection.deleteMany(
+      const deletedCount = (await CoinProvider.providerCollection.deleteMany(
         {}
       )) as number;
 
@@ -236,7 +279,7 @@ export class CoinProvider {
   ): Promise<{ deleted: boolean; deletedCount?: number }> {
     try {
       // Delete multiple documents based on an array of symbols
-      const deletedCount = await CoinProvider.collection.deleteMany({
+      const deletedCount = await CoinProvider.providerCollection.deleteMany({
         symbol: { $in: symbols },
       });
 
@@ -573,8 +616,7 @@ export class CoinProvider {
   }
 
   private async sortOutUniqueCoins(coins: Coin[]) {
-    const coinRepo = CoinRepository.getInstance();
-    const originCoins: Coin[] = await coinRepo.getAllCoins();
+    const originCoins: Coin[] = await CoinProvider.fetchOriginCoinsFromDb();
     console.log(
       `${this.PROJECT}:${this.CLASS_NAME} Origin Coins ---> `,
       originCoins.length
@@ -859,8 +901,7 @@ export class CoinProvider {
   public async moveSelectionToCoins(coins: Coin[]) {
     try {
       const symbols = coins.map((c) => c.symbol);
-      const coinRepo = CoinRepository.getInstance();
-      await coinRepo.addCoinsToDb(coins);
+      await this.addCoinsToCoinsDb(coins);
       await this.deleteCoinsFromDb(symbols);
       await this.refreshRepository();
       return Object.values(this.uniqueCoins.values);
@@ -892,6 +933,7 @@ export class CoinProvider {
       coins = this.assignCategories(coins, this.LOWEST_TURNOVER24H);
       coins = this.assignLinks(coins);
       await this.saveUniqueCoinsToDb(coins);
+      await notifyAboutCoinsRefresh(this.PROJECT, this.CLASS_NAME, "");
     } catch (error) {
       console.log(error);
       await notifyAboutFailedFunction(

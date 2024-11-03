@@ -23,24 +23,15 @@ import { UnixToNamedTimeRu } from "../../../utils/time-converter.ts";
 // }
 
 export function formatCoinRefreshNotificationMsg(
-  data: { symbol: string }[],
-  fnName: string,
-  projectName: string
+  projectName: string,
+  className: string,
+  fnName: string
 ) {
-  const symbols = data.map((d) => d.symbol).join(", ");
   const timestamp = UnixToNamedTimeRu(new Date().getTime());
 
   const msg = `
-  <b>🔄 ${projectName} Update Alert 🔄</b>
-  ━━━━━━━━━━━━━
-🚀 <b>New Coins Detected:</b><code>${symbols}</code>
-  ━━━━━━━━━━━━━
-  
-  💼 <b>Function:</b> <u>${fnName}()</u>
-  🕒 <b>Time:</b> <i>${timestamp}</i>
-  ━━━━━━━━━━━━━
-  
-  <b>Stay tuned for more updates!</b>`;
-
+<b>🔄 ${projectName}:${className} Coin Refresh Done 🔄</b>
+━━━━━━━━━━━━━ 
+🕒 <b>Time:</b> <i>${timestamp}</i>`;
   return msg;
 }

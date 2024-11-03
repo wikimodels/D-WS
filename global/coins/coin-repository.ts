@@ -13,6 +13,7 @@ import { formatFailedUpdatesNotificationMsg } from "../../functions/tg/formatter
 import { DColors } from "../../models/shared/colors.ts";
 import { notifyAboutFailedFunction } from "../../functions/tg/notifications/failed-function.ts";
 import { designateCategories } from "./shared/designate-categories.ts";
+import { notifyAboutTurnover24hUpdateCompletion } from "../../functions/tg/notifications/turnover24h-update-complete.ts";
 
 const {
   MONGO_DB,
@@ -647,6 +648,7 @@ export class CoinRepository {
         error
       );
     }
+    await notifyAboutTurnover24hUpdateCompletion(this.PROJECT_NAME);
   }
   // #endregion
 

@@ -2,10 +2,10 @@ import { formatCoinRefreshNotificationMsg } from "../formatters/coin-msg/coin-re
 import { sendTgGeneralMessage } from "../send-general-tg-msg.ts";
 
 export async function notifyAboutCoinsRefresh(
-  coins: any[],
   projectName: string,
+  className: string,
   fnName: string
 ) {
-  const msg = formatCoinRefreshNotificationMsg(coins, projectName, fnName);
+  const msg = formatCoinRefreshNotificationMsg(projectName, className, fnName);
   await sendTgGeneralMessage(msg);
 }
