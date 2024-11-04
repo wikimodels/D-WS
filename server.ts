@@ -3,7 +3,7 @@ import express from "npm:express@4.18.2";
 import cors from "npm:cors";
 import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
 
-import coinRoutes from "./routes/coins.routes.ts";
+import coinRoutes from "./routes/coins/coins.routes.ts";
 import binanceWsRoutes from "./routes/binance-ws.routes.ts";
 import bybitWsRoutes from "./routes/bybit-ws.routes.ts";
 

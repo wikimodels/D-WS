@@ -5,7 +5,7 @@ import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts"; //
 
 import binanceWsRoutes from "../routes/binance-ws.routes.ts";
 import bybitWsRoutes from "../routes/bybit-ws.routes.ts";
-import coinRoutes from "../routes/coins.routes.ts";
+import coinRoutes from "../routes/coins/coins.routes.ts";
 import coinsAtWorkRoutes from "../routes/working-coins.routes.ts";
 import triggeredAlertsRoutes from "../routes/triggered-alerts.routes.ts";
 import archivedAlertsRoutes from "../routes/archived-alerts.routes.ts";

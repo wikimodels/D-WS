@@ -1,6 +1,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { CoinProvider } from "../../global/coins/coin-provider.ts";
 
+// #region FRESH COINS
 export const getAllCoins = (_req: any, res: any) => {
   try {
     const coinProvider = CoinProvider.getInstance();
@@ -14,6 +15,51 @@ export const getAllCoins = (_req: any, res: any) => {
     res.status(500).send("An error occurred while fetching coins.");
   }
 };
+
+export const moveCoinArrayToCoinsColl = (req: any, res: any) => {
+  const coins = req.body;
+  if (!coins) {
+    return res.status(400).send("Bad Request: Invalid coins array structure");
+  }
+  try {
+    const coinProvider = CoinProvider.getInstance();
+    if (coinProvider) {
+      res.status(200).send(coinProvider.moveSelectionToCoins(coins));
+    } else {
+      res.status(503).send("CoinProvider not initialized yet");
+    }
+  } catch (error) {
+    console.error("Error retrieving coins:", error);
+    res
+      .status(500)
+      .send(
+        "An error occurred while moving coins from CoinProvider-Collection to Coin-Collection."
+      );
+  }
+};
+
+export const removeCoinArray = (req: any, res: any) => {
+  const symbols = req.body;
+  if (!symbols) {
+    return res.status(400).send("Bad Request: Invalid symbols array structure");
+  }
+  try {
+    const coinProvider = CoinProvider.getInstance();
+    if (coinProvider) {
+      res.status(200).send(coinProvider.deleteCoinArrayFromDb(symbols));
+    } else {
+      res.status(503).send("CoinProvider not initialized yet");
+    }
+  } catch (error) {
+    console.error("Error retrieving coins:", error);
+    res
+      .status(500)
+      .send(
+        "An error occurred while moving coins from CoinProvider-Collection to Coin-Collection."
+      );
+  }
+};
+// #endregion
 
 // #region BLACK LIST
 export const getBlackListCoins = async (_req: any, res: any) => {

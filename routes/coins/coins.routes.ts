@@ -4,7 +4,7 @@ import {
   deleteCoinFromDb,
   getAllCoins,
   updateCoinInDb,
-} from "../controllers/coins/coins.controller.ts";
+} from "../../controllers/coins/coins.controller.ts";
 
 const router = express.Router();
 // Routes

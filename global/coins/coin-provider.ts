@@ -12,7 +12,6 @@ import type { SantimentId } from "../../models/shared/santiment-id.ts";
 import type { CoinGeckoId } from "../../models/shared/coin-gecko-id.ts";
 import { DColors } from "../../models/shared/colors.ts";
 import { Coin } from "./../../models/shared/coin.ts";
-import { SpaceNames } from "../../models/shared/space-names.ts";
 import { Status } from "../../models/shared/status.ts";
 import { designateCategories } from "./shared/designate-categories.ts";
 import { notifyAboutCoinsRefresh } from "../../functions/tg/notifications/coin-refresh.ts";
@@ -31,7 +30,7 @@ import { deleteAllFromSantimentMissing } from "../../functions/kv-db/santiment/d
 
 export type InsertOneResult = { inserted: boolean; insertedId?: string };
 export type InsertManyResult = { inserted: boolean; insertedCount?: number };
-
+export type DeletedResult = { deleted: boolean; deletedCount?: number };
 const {
   BYBIT_PERP_TICKETS_URL,
   BINANCE_PERP_TICKETS_URL,
@@ -231,10 +230,32 @@ export class CoinProvider {
     }
   }
 
-  public async deleteAllCoinsFromDb(): Promise<{
-    deleted: boolean;
-    deletedCount?: number;
-  }> {
+  public async deleteCoinFromDb(symbol: string): Promise<DeletedResult> {
+    try {
+      const deletedCount = await CoinProvider.providerCollection.deleteOne({
+        symbol,
+      });
+      await this.refreshRepository();
+
+      if (deletedCount > 0) {
+        return { deleted: true, deletedCount };
+      } else {
+        return { deleted: true };
+      }
+    } catch (error) {
+      console.error("Error in deleteCoinFromDb:", error);
+
+      await notifyAboutFailedFunction(
+        this.PROJECT,
+        this.CLASS_NAME,
+        "deleteCoinFromDb",
+        error
+      );
+      return { deleted: false };
+    }
+  }
+
+  public async deleteAllCoinsFromDb(): Promise<DeletedResult> {
     try {
       // Attempt to delete the coin with the specified symbol
       const deletedCount = (await CoinProvider.providerCollection.deleteMany(
@@ -265,7 +286,7 @@ export class CoinProvider {
 
   public async deleteCoinArrayFromDb(
     symbols: string[]
-  ): Promise<{ deleted: boolean; deletedCount?: number }> {
+  ): Promise<DeletedResult> {
     try {
       // Delete multiple documents based on an array of symbols
       const deletedCount = await CoinProvider.providerCollection.deleteMany({
@@ -402,6 +423,7 @@ export class CoinProvider {
   public async addCoinToBlackList(coin: Coin) {
     try {
       await addCoinToBlackList(coin);
+      await this.deleteCoinFromDb(coin.symbol);
     } catch (error) {
       console.log(error);
       await notifyAboutFailedFunction(
@@ -416,6 +438,8 @@ export class CoinProvider {
   public async addCoinArrayToBlackList(coins: Coin[]) {
     try {
       await addCoinArrayToBlackList(coins);
+      const symbols = coins.map((c) => c.symbol);
+      await this.deleteCoinArrayFromDb(symbols);
     } catch (error) {
       console.log(error);
       await notifyAboutFailedFunction(
@@ -457,7 +481,7 @@ export class CoinProvider {
 
   // #endregion
 
-  // ✴️ #region PROCEDURE FUNCTIONS
+  // #region PROCEDURE FUNCTIONS
 
   private async fetchBybitData() {
     try {
@@ -860,7 +884,7 @@ export class CoinProvider {
   }
   // #endregion
 
-  // ✴️ #region BUSINESS LOGIC
+  // #region BUSINESS LOGIC
   public async moveSelectionToCoins(coins: Coin[]) {
     try {
       const symbols = coins.map((c) => c.symbol);
