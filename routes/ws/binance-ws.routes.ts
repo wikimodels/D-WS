@@ -3,7 +3,7 @@ import {
   closeBinanceWs,
   getBinanceWsStatus,
   startBinanceWs,
-} from "../controllers/binance-ws.conroller.ts";
+} from "../../controllers/binance-ws.conroller.ts";
 
 const router = express.Router();
 router.get("/ws/binance/start", startBinanceWs);

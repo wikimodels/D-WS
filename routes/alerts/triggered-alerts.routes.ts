@@ -3,7 +3,7 @@ import {
   getAllTriggeredAlerts,
   removeTriggeredAlertBatch,
   updateAlertViaTriggered,
-} from "../controllers/triggered-alerts.controller.ts";
+} from "../../controllers/triggered-alerts.controller.ts";
 
 const router = express.Router();
 router.get("/triggered/alerts", getAllTriggeredAlerts);

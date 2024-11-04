@@ -1,4 +1,3 @@
-import { InsertManyResult } from "./coin-provider";
 // deno-lint-ignore-file no-explicit-any
 import {
   MongoClient,
@@ -17,6 +16,7 @@ import { designateCategories } from "./shared/designate-categories.ts";
 import { notifyAboutTurnover24hUpdateCompletion } from "../../functions/tg/notifications/turnover24h-update-complete.ts";
 import type {
   DeleteResult,
+  InsertManyResult,
   InsertOneResult,
   ModifyResult,
 } from "../../models/mongodb/operations.ts";
@@ -209,7 +209,7 @@ export class CoinRepository {
       )) as Bson.ObjectId | null;
       await this.refreshRepository();
       if (res) {
-        return { inserted: true, insertedId: parseInt(res.toJSON()) };
+        return { inserted: true, insertedId: res.toJSON() };
       } else {
         return { inserted: false };
       }
@@ -234,7 +234,7 @@ export class CoinRepository {
       await this.refreshRepository();
 
       console.log({ inserted: true, insertedIds });
-      return { inserted: true, insertedIdsCount: insertedIds.length };
+      return { inserted: true, insertedCount: insertedIds.length };
     } catch (error) {
       // Log the error with contextual information
       console.error("Failed to insert coins in addCoinArrayToDb:", error);

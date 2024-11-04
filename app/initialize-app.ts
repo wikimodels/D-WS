@@ -3,13 +3,13 @@ import express, { Application } from "npm:express@4.18.2";
 import cors from "npm:cors";
 import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts"; //
 
-import binanceWsRoutes from "../routes/binance-ws.routes.ts";
-import bybitWsRoutes from "../routes/bybit-ws.routes.ts";
+import binanceWsRoutes from "../routes/ws/binance-ws.routes.ts";
+import bybitWsRoutes from "../routes/ws/bybit-ws.routes.ts";
 import coinRoutes from "../routes/coins/coins.routes.ts";
-import coinsAtWorkRoutes from "../routes/working-coins.routes.ts";
-import triggeredAlertsRoutes from "../routes/triggered-alerts.routes.ts";
-import archivedAlertsRoutes from "../routes/archived-alerts.routes.ts";
-import alertsRoutes from "../routes/alerts.routes.ts";
+import coinsAtWorkRoutes from "../routes/coins/working-coins.routes.ts";
+import triggeredAlertsRoutes from "../routes/alerts/triggered-alerts.routes.ts";
+import archivedAlertsRoutes from "../routes/alerts/archived-alerts.routes.ts";
+import alertsRoutes from "../routes/alerts/alerts.routes.ts";
 
 const { ORIGIN_I, ORIGIN_II } = await load();
 const allowedOrigins = [ORIGIN_I, ORIGIN_II];

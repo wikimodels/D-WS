@@ -3,7 +3,7 @@ import {
   startBybitWs,
   closeBybitWs,
   getBybitWsStatus,
-} from "../controllers/bybit-ws.conroller.ts";
+} from "../../controllers/bybit-ws.conroller.ts";
 
 const router = express.Router();
 router.get("/ws/bybit/start", startBybitWs);

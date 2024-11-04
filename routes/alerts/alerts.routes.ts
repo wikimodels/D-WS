@@ -6,8 +6,8 @@ import {
   removeAllAlerts,
   modifyAlert,
   removeAlertBatch,
-} from "../controllers/alerts.controller.ts";
-import { archiveAlert } from "../controllers/archived-alerts.controller.ts";
+} from "../../controllers/alerts.controller.ts";
+import { archiveAlert } from "../../controllers/archived-alerts.controller.ts";
 
 const router = express.Router();
 

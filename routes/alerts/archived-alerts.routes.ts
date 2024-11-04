@@ -4,7 +4,7 @@ import {
   deleteArchivedAlertsBatch,
   getAllArchivedAlerts,
   updateArchivedAlert,
-} from "../controllers/archived-alerts.controller.ts";
+} from "../../controllers/archived-alerts.controller.ts";
 
 const router = express.Router();
 
