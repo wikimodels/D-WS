@@ -1,6 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
-import { CoinRepository } from "../global/coins/coin-repository.ts";
-import type { Coin } from "../models/shared/coin.ts";
+import { CoinRepository } from "../../global/coins/coin-repository.ts";
+import type { Coin } from "../../models/shared/coin.ts";
 
 // Route handlers
 export const getAllCoins = (_req: any, res: any) => {

@@ -221,7 +221,7 @@ export class CoinRepository {
     }
   }
 
-  public async addCoinsToDb(
+  public async addCoinArrayToDb(
     coins: Coin[]
   ): Promise<{ inserted: boolean; insertedIdsCount?: number }> {
     try {
@@ -235,13 +235,13 @@ export class CoinRepository {
       return { inserted: true, insertedIdsCount: insertedIds.length };
     } catch (error) {
       // Log the error with contextual information
-      console.error("Failed to insert coins in addCoinsToDb:", error);
+      console.error("Failed to insert coins in addCoinArrayToDb:", error);
 
       // Optionally, notify monitoring system about the failed operation
       await notifyAboutFailedFunction(
         this.PROJECT_NAME,
         this.CLASS_NAME,
-        "addCoinsToDb",
+        "addCoinArrayToDb",
         error
       );
 
@@ -277,7 +277,7 @@ export class CoinRepository {
     }
   }
 
-  public async deleteCoinsFromDb(
+  public async deleteCoinArrayFromDb(
     symbols: string[]
   ): Promise<{ deleted: boolean; deletedCount?: number }> {
     try {
