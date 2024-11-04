@@ -16,6 +16,11 @@ import { SpaceNames } from "../../models/shared/space-names.ts";
 import { Status } from "../../models/shared/status.ts";
 import { designateCategories } from "./shared/designate-categories.ts";
 import { notifyAboutCoinsRefresh } from "../../functions/tg/notifications/coin-refresh.ts";
+import type {
+  DeleteResult,
+  InsertOneResult,
+} from "../../models/mongodb/operations.ts";
+import type { InsertManyResult } from "../../models/mongodb/operations.ts";
 
 const {
   BYBIT_PERP_TICKETS_URL,
@@ -103,9 +108,7 @@ export class CoinSorter {
     }
   }
 
-  public async addCoinToDb(
-    newCoin: Coin
-  ): Promise<{ inserted: boolean; insertedId?: string }> {
+  public async addCoinToDb(newCoin: Coin): Promise<InsertOneResult> {
     try {
       // Attempt to insert the new coin into the database
       const res = (await CoinSorter.sorterCollection.insertOne(
@@ -136,9 +139,7 @@ export class CoinSorter {
     }
   }
 
-  public async addCoinArrayToDb(
-    coins: Coin[]
-  ): Promise<{ inserted: boolean; insertedCount?: number }> {
+  public async addCoinArrayToDb(coins: Coin[]): Promise<InsertManyResult> {
     try {
       // Insert multiple documents using insertMany
       const res = await CoinSorter.sorterCollection.insertMany(coins);
@@ -160,10 +161,7 @@ export class CoinSorter {
     }
   }
 
-  public async deleteAllCoinsFromDb(): Promise<{
-    deleted: boolean;
-    deletedCount?: number;
-  }> {
+  public async deleteAllCoinsFromDb(): Promise<DeleteResult> {
     try {
       // Attempt to delete the coin with the specified symbol
       const deletedCount = (await CoinSorter.sorterCollection.deleteMany(
@@ -191,9 +189,7 @@ export class CoinSorter {
     }
   }
 
-  public async deleteCoinArrayFromDb(
-    symbols: string[]
-  ): Promise<{ deleted: boolean; deletedCount?: number }> {
+  public async deleteCoinArrayFromDb(symbols: string[]): Promise<DeleteResult> {
     try {
       // Delete multiple documents based on an array of symbols
       const deletedCount = await CoinSorter.sorterCollection.deleteMany({

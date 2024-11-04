@@ -1,3 +1,4 @@
+import { InsertManyResult } from "./coin-provider";
 // deno-lint-ignore-file no-explicit-any
 import {
   MongoClient,
@@ -14,6 +15,11 @@ import { DColors } from "../../models/shared/colors.ts";
 import { notifyAboutFailedFunction } from "../../functions/tg/notifications/failed-function.ts";
 import { designateCategories } from "./shared/designate-categories.ts";
 import { notifyAboutTurnover24hUpdateCompletion } from "../../functions/tg/notifications/turnover24h-update-complete.ts";
+import type {
+  DeleteResult,
+  InsertOneResult,
+  ModifyResult,
+} from "../../models/mongodb/operations.ts";
 
 const {
   MONGO_DB,
@@ -165,7 +171,7 @@ export class CoinRepository {
   public async updateCoinInDb(
     symbol: string,
     updatedData: Partial<Coin>
-  ): Promise<{ modified: boolean; modifiedCount?: number }> {
+  ): Promise<ModifyResult> {
     try {
       // Attempt to update the coin in the database
       const { modifiedCount } = await CoinRepository.collection.updateOne(
@@ -196,9 +202,7 @@ export class CoinRepository {
     }
   }
 
-  public async addCoinToDb(
-    newCoin: Coin
-  ): Promise<{ inserted: boolean; insertedId?: number }> {
+  public async addCoinToDb(newCoin: Coin): Promise<InsertOneResult> {
     try {
       const res = (await CoinRepository.collection.insertOne(
         newCoin
@@ -221,9 +225,7 @@ export class CoinRepository {
     }
   }
 
-  public async addCoinArrayToDb(
-    coins: Coin[]
-  ): Promise<{ inserted: boolean; insertedIdsCount?: number }> {
+  public async addCoinArrayToDb(coins: Coin[]): Promise<InsertManyResult> {
     try {
       const res = await CoinRepository.collection.insertMany(coins);
       const insertedIds = Object.values(res.insertedIds).map((id) =>
@@ -250,9 +252,7 @@ export class CoinRepository {
     }
   }
 
-  public async deleteCoinFromDb(
-    symbol: string
-  ): Promise<{ deleted: boolean; deletedCount?: number }> {
+  public async deleteCoinFromDb(symbol: string): Promise<DeleteResult> {
     try {
       const deletedCount = await CoinRepository.collection.deleteOne({
         symbol,
@@ -277,9 +277,7 @@ export class CoinRepository {
     }
   }
 
-  public async deleteCoinArrayFromDb(
-    symbols: string[]
-  ): Promise<{ deleted: boolean; deletedCount?: number }> {
+  public async deleteCoinArrayFromDb(symbols: string[]): Promise<DeleteResult> {
     try {
       // Delete multiple documents based on an array of symbols
       const deletedCount = await CoinRepository.collection.deleteMany({

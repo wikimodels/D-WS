@@ -27,10 +27,12 @@ import { deleteAllFromCoinGeckoMissing } from "../../functions/kv-db/coin-gecko/
 import { saveCoinArrayToSantimentMissing } from "../../functions/kv-db/santiment/save-coin-array-to-santiment-missing.ts";
 import { fetchSantimentMissingCoins } from "../../functions/kv-db/santiment/fetch-santiment-missing-coins.ts";
 import { deleteAllFromSantimentMissing } from "../../functions/kv-db/santiment/delete-all-from-santiment-missing.ts";
+import type {
+  InsertOneResult,
+  InsertManyResult,
+  DeletedResult,
+} from "../../models/mongodb/operations.ts";
 
-export type InsertOneResult = { inserted: boolean; insertedId?: string };
-export type InsertManyResult = { inserted: boolean; insertedCount?: number };
-export type DeletedResult = { deleted: boolean; deletedCount?: number };
 const {
   BYBIT_PERP_TICKETS_URL,
   BINANCE_PERP_TICKETS_URL,
@@ -206,9 +208,7 @@ export class CoinProvider {
     }
   }
 
-  public async addCoinsToCoinsColl(
-    coins: Coin[]
-  ): Promise<{ inserted: boolean; insertedCount?: number }> {
+  public async addCoinsToCoinsColl(coins: Coin[]): Promise<InsertManyResult> {
     try {
       // Insert multiple documents using insertMany
       const res = await CoinProvider.basicCollection.insertMany(coins);
