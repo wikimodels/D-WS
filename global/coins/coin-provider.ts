@@ -117,7 +117,7 @@ export class CoinProvider {
   }
   // #endregion
 
-  // ✴️ #region MONGO DB OPERATIONS
+  //#region MONGO DB OPERATIONS
   private static async fetchCoinsFromDb(): Promise<Coin[]> {
     try {
       // Attempt to fetch all coins from the database

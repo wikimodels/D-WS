@@ -109,13 +109,13 @@ export const moveCoinArrayToBlackList = async (req: any, res: any) => {
 };
 
 export const removeCoinFromBlackList = async (req: any, res: any) => {
-  const coin = req.body;
-  if (!coin) {
-    return res.status(400).send("Bad Request: Invalid coin structure");
+  const symbol: string = req.body;
+  if (!symbol) {
+    return res.status(400).send("Bad Request: Invalid Symbol structure");
   }
   try {
     const coinProvider = CoinProvider.getInstance();
-    const result = await coinProvider!.deleteCoinFromBlackList(coin);
+    const result = await coinProvider!.deleteCoinFromBlackList(symbol);
     res.status(200).send(result);
   } catch (error) {
     console.error(error);
@@ -124,13 +124,13 @@ export const removeCoinFromBlackList = async (req: any, res: any) => {
 };
 
 export const removeCoinArrayFromBlackList = async (req: any, res: any) => {
-  const coins = req.body;
-  if (!coins) {
-    return res.status(400).send("Bad Request: Invalid coins array structure");
+  const symbols = req.body;
+  if (!symbols) {
+    return res.status(400).send("Bad Request: Invalid Symbols Array structure");
   }
   try {
     const coinProvider = CoinProvider.getInstance();
-    const result = await coinProvider!.deleteCoinArrayFromBlackList(coins);
+    const result = await coinProvider!.deleteCoinArrayFromBlackList(symbols);
     res.status(200).send(result);
   } catch (error) {
     console.error(error);

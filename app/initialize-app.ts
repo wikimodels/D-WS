@@ -10,6 +10,7 @@ import coinsAtWorkRoutes from "../routes/coins/working-coins.routes.ts";
 import triggeredAlertsRoutes from "../routes/alerts/triggered-alerts.routes.ts";
 import archivedAlertsRoutes from "../routes/alerts/archived-alerts.routes.ts";
 import alertsRoutes from "../routes/alerts/alerts.routes.ts";
+import coinsProviderRoutes from "../routes/coins/coins-provider.routes.ts";
 
 const { ORIGIN_I, ORIGIN_II } = await load();
 const allowedOrigins = [ORIGIN_I, ORIGIN_II];
@@ -32,6 +33,7 @@ const initializeApp = async (): Promise<Application> => {
   app.use("/api", triggeredAlertsRoutes);
   app.use("/api", archivedAlertsRoutes);
   app.use("/api", alertsRoutes);
+  app.use("/api", coinsProviderRoutes);
 
   //   app.get("/alerts", async (_req: any, res: any) => {
   //     try {
