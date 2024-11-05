@@ -1,3 +1,5 @@
+// deno-lint-ignore-file
+import { result } from "https://cdn.skypack.dev/lodash";
 // deno-lint-ignore-file no-explicit-any
 import { CoinProvider } from "../../global/coins/coin-provider.ts";
 
@@ -7,6 +9,21 @@ export const getAllCoins = (_req: any, res: any) => {
     const coinProvider = CoinProvider.getInstance();
     if (coinProvider) {
       res.status(200).send(coinProvider.getAllCoins());
+    } else {
+      res.status(503).send("CoinProvider not initialized yet");
+    }
+  } catch (error) {
+    console.error("Error retrieving coins:", error);
+    res.status(500).send("An error occurred while fetching coins.");
+  }
+};
+
+export const executeRefreshmentProcedure = async (_req: any, res: any) => {
+  try {
+    const coinProvider = CoinProvider.getInstance();
+    if (coinProvider) {
+      const result = await coinProvider.runRefreshmentPocedure();
+      res.status(200).send(result);
     } else {
       res.status(503).send("CoinProvider not initialized yet");
     }

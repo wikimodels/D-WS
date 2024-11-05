@@ -943,6 +943,7 @@ export class CoinProvider {
       coins = this.assignLinks(coins);
       await this.saveUniqueCoinsToDb(coins);
       await notifyAboutCoinsRefresh(this.PROJECT, this.CLASS_NAME, "");
+      return { finish: true };
     } catch (error) {
       console.log(error);
       await notifyAboutFailedFunction(
