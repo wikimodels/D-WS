@@ -37,4 +37,6 @@ export interface Coin {
   gh_commit_count_4_weeks?: number;
   image_url?: string;
   coinExchange?: string;
+  coinGeckoMissing?: boolean;
+  santimentMissing?: boolean;
 }

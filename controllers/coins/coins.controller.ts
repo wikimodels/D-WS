@@ -3,11 +3,11 @@ import { CoinRepository } from "../../global/coins/coin-repository.ts";
 import type { Coin } from "../../models/shared/coin.ts";
 
 // Route handlers
-export const getAllCoins = (_req: any, res: any) => {
+export const getAllCoins = async (_req: any, res: any) => {
   try {
-    const coinRepo = CoinRepository.getInstance();
-    if (coinRepo) {
-      res.status(200).send(coinRepo.getAllCoins());
+    const coins = await CoinRepository.fetchCoinsFromDb();
+    if (coins) {
+      res.status(200).send(coins);
     } else {
       res.status(503).send("CoinRepo not initialized yet");
     }

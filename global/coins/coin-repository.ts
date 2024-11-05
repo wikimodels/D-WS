@@ -16,8 +16,7 @@ import { designateCategories } from "./shared/designate-categories.ts";
 import { notifyAboutTurnover24hUpdateCompletion } from "../../functions/tg/notifications/turnover24h-update-complete.ts";
 import type {
   DeleteResult,
-  InsertManyResult,
-  InsertOneResult,
+  InsertResult,
   ModifyResult,
 } from "../../models/mongodb/operations.ts";
 
@@ -101,7 +100,9 @@ export class CoinRepository {
   }
 
   public getAllCoins(): Coin[] {
-    return Array.from(this.coins.values());
+    return Array.from(this.coins.values()).sort((a, b) =>
+      a.symbol.localeCompare(b.symbol)
+    );
   }
 
   public getBybitCoins(): Coin[] {
@@ -153,7 +154,7 @@ export class CoinRepository {
   // #endregion
 
   // #region MONGO DB OPERATIONS
-  private static async fetchCoinsFromDb(): Promise<Coin[]> {
+  public static async fetchCoinsFromDb(): Promise<Coin[]> {
     try {
       return await this.collection.find({}).toArray();
     } catch (error) {
@@ -179,15 +180,12 @@ export class CoinRepository {
         { $set: updatedData }
       );
 
-      // Refresh the repository after updating the database
       await this.refreshRepository();
 
-      // Return success response if any documents were modified
-      if (modifiedCount > 0) {
-        return { modified: true, modifiedCount };
-      } else {
-        return { modified: false, modifiedCount: 0 };
-      }
+      return {
+        modified: modifiedCount > 0,
+        modifiedCount: modifiedCount,
+      } as ModifyResult;
     } catch (error) {
       // Log the error with context information
       console.error("Error in updateCoinInDb:", error);
@@ -202,17 +200,16 @@ export class CoinRepository {
     }
   }
 
-  public async addCoinToDb(newCoin: Coin): Promise<InsertOneResult> {
+  public async addCoinToDb(newCoin: Coin): Promise<InsertResult> {
     try {
       const res = (await CoinRepository.collection.insertOne(
         newCoin
       )) as Bson.ObjectId | null;
       await this.refreshRepository();
-      if (res) {
-        return { inserted: true, insertedId: res.toJSON() };
-      } else {
-        return { inserted: false };
-      }
+      return {
+        inserted: res != undefined,
+        insertedCount: 1,
+      };
     } catch (error) {
       console.error("Error in addCoinToDb:", error);
       await notifyAboutFailedFunction(
@@ -225,7 +222,7 @@ export class CoinRepository {
     }
   }
 
-  public async addCoinArrayToDb(coins: Coin[]): Promise<InsertManyResult> {
+  public async addCoinArrayToDb(coins: Coin[]): Promise<InsertResult> {
     try {
       const res = await CoinRepository.collection.insertMany(coins);
       const insertedIds = Object.values(res.insertedIds).map((id) =>
@@ -233,8 +230,7 @@ export class CoinRepository {
       );
       await this.refreshRepository();
 
-      console.log({ inserted: true, insertedIds });
-      return { inserted: true, insertedCount: insertedIds.length };
+      return { inserted: res != undefined, insertedCount: insertedIds.length };
     } catch (error) {
       // Log the error with contextual information
       console.error("Failed to insert coins in addCoinArrayToDb:", error);
@@ -248,7 +244,7 @@ export class CoinRepository {
       );
 
       // Return failure result
-      return { inserted: false };
+      return { inserted: false, insertedCount: 0 } as InsertResult;
     }
   }
 
@@ -259,11 +255,7 @@ export class CoinRepository {
       });
       await this.refreshRepository();
 
-      if (deletedCount > 0) {
-        return { deleted: true, deletedCount };
-      } else {
-        return { deleted: true };
-      }
+      return { deleted: deletedCount > 0, deletedCount };
     } catch (error) {
       console.error("Error in deleteCoinFromDb:", error);
 
@@ -273,7 +265,7 @@ export class CoinRepository {
         "deleteCoinFromDb",
         error
       );
-      return { deleted: false };
+      return { deleted: false, deletedCount: 0 };
     }
   }
 
@@ -287,12 +279,11 @@ export class CoinRepository {
       // Refresh the repository after deletion (if needed)
       await this.refreshRepository();
 
-      // Check if any documents were deleted
-      if (deletedCount && deletedCount > 0) {
-        return { deleted: true, deletedCount };
-      } else {
-        return { deleted: true };
-      }
+      const deleteResult: DeleteResult = {
+        deletedCount: deletedCount,
+        deleted: deletedCount > 0,
+      };
+      return deleteResult;
     } catch (error) {
       console.error("Failed to delete coins:", error);
       await notifyAboutFailedFunction(
@@ -301,7 +292,7 @@ export class CoinRepository {
         "deleteCoinFromDb",
         error
       );
-      return { deleted: false };
+      return { deleted: false, deletedCount: 0 };
     }
   }
   // #endregion

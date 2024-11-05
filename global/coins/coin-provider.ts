@@ -28,9 +28,8 @@ import { saveCoinArrayToSantimentMissing } from "../../functions/kv-db/santiment
 import { fetchSantimentMissingCoins } from "../../functions/kv-db/santiment/fetch-santiment-missing-coins.ts";
 import { deleteAllFromSantimentMissing } from "../../functions/kv-db/santiment/delete-all-from-santiment-missing.ts";
 import type {
-  InsertOneResult,
-  InsertManyResult,
-  DeletedResult,
+  InsertResult,
+  DeleteResult,
 } from "../../models/mongodb/operations.ts";
 
 const {
@@ -69,7 +68,7 @@ export class CoinProvider {
     this.uniqueCoins = new Map(coins.map((coin) => [coin.symbol, coin]));
   }
 
-  // ✴️ #region UTIL FUNCTIONS
+  // #region UTIL FUNCTIONS
   public static async initializeFromDb(): Promise<void> {
     if (!CoinProvider.instance) {
       this.dbClient = new MongoClient();
@@ -97,6 +96,8 @@ export class CoinProvider {
     this.uniqueCoins.clear();
     const coins = await CoinProvider.fetchCoinsFromDb();
     this.uniqueCoins = new Map(coins.map((coin) => [coin.symbol, coin]));
+    //TODO
+    console.log("%cCoinProvider:refreshRepository() --> done", DColors.magenta);
   }
 
   private rateLimitDelay(ms: number) {
@@ -113,7 +114,9 @@ export class CoinProvider {
   }
 
   public getAllCoins(): Coin[] {
-    return Array.from(this.uniqueCoins.values());
+    return Array.from(this.uniqueCoins.values()).sort((a, b) =>
+      a.symbol.localeCompare(b.symbol)
+    );
   }
   // #endregion
 
@@ -154,26 +157,22 @@ export class CoinProvider {
     }
   }
 
-  public async addCoinToDb(newCoin: Coin): Promise<InsertOneResult> {
+  public async addCoinToDb(newCoin: Coin): Promise<InsertResult> {
     try {
-      // Attempt to insert the new coin into the database
       const res = (await CoinProvider.providerCollection.insertOne(
         newCoin
       )) as Bson.ObjectId | null;
 
-      // Check if the coin was successfully inserted
       if (res) {
         this.refreshRepository();
         return {
           inserted: true,
-          insertedId: (res as Bson.ObjectId).toString(),
-        };
+          insertedCount: 1,
+        } as InsertResult;
       }
 
-      // If the insertion failed, return a failure response
-      return { inserted: false };
+      return { inserted: false, insertedCount: 0 };
     } catch (error) {
-      // Log the error message (you can use a logging library here if preferred)
       console.error("Failed to add coin to database:", error);
       await notifyAboutFailedFunction(
         this.PROJECT,
@@ -181,16 +180,13 @@ export class CoinProvider {
         "addCoinToDb",
         error
       );
-      // Return a failure response
-      return { inserted: false };
+      return { inserted: false, insertedCount: 0 };
     }
   }
 
-  public async addCoinArrayToDb(coins: Coin[]): Promise<InsertManyResult> {
+  public async addCoinArrayToDb(coins: Coin[]): Promise<InsertResult> {
     try {
-      // Insert multiple documents using insertMany
       const res = await CoinProvider.providerCollection.insertMany(coins);
-      // Convert insertedIds from the returned object to an array
       const insertedIds = Object.values(res.insertedIds).map((id) =>
         (id as Bson.ObjectId).toString()
       );
@@ -204,20 +200,31 @@ export class CoinProvider {
         "addCoinArrayToDb",
         error
       );
-      return { inserted: false };
+      return { inserted: false, insertedCount: 0 };
     }
   }
 
-  public async addCoinsToCoinsColl(coins: Coin[]): Promise<InsertManyResult> {
+  public async addCoinsToCoinsColl(coins: Coin[]): Promise<InsertResult> {
     try {
-      // Insert multiple documents using insertMany
       const res = await CoinProvider.basicCollection.insertMany(coins);
-      // Convert insertedIds from the returned object to an array
       const insertedIds = Object.values(res.insertedIds).map((id) =>
         (id as Bson.ObjectId).toString()
       );
-      this.refreshRepository();
-      return { inserted: true, insertedCount: insertedIds.length };
+      const insertResult = {
+        inserted: true,
+        insertedCount: insertedIds.length,
+      };
+
+      console.log("---- LOGGING ----");
+      console.log(
+        "%cCoinProvider:addCoinsToCoinsColl() insertion result",
+        DColors.yellow,
+        insertResult
+      );
+      return {
+        inserted: true,
+        insertedCount: insertedIds.length,
+      } as InsertResult;
     } catch (error) {
       console.error("Failed to insert coins:", error);
       await notifyAboutFailedFunction(
@@ -226,22 +233,22 @@ export class CoinProvider {
         "addCoinArrayToDb",
         error
       );
-      return { inserted: false };
+      return { inserted: false, insertedCount: 0 } as InsertResult;
     }
   }
 
-  public async deleteCoinFromDb(symbol: string): Promise<DeletedResult> {
+  public async deleteCoinFromDb(symbol: string): Promise<DeleteResult> {
     try {
       const deletedCount = await CoinProvider.providerCollection.deleteOne({
         symbol,
       });
       await this.refreshRepository();
 
-      if (deletedCount > 0) {
-        return { deleted: true, deletedCount };
-      } else {
-        return { deleted: true };
-      }
+      const deleteResult: DeleteResult = {
+        deleted: deletedCount > 0 ? true : false,
+        deletedCount: deletedCount,
+      };
+      return deleteResult;
     } catch (error) {
       console.error("Error in deleteCoinFromDb:", error);
 
@@ -251,25 +258,20 @@ export class CoinProvider {
         "deleteCoinFromDb",
         error
       );
-      return { deleted: false };
+      return { deleted: false, deletedCount: 0 } as DeleteResult;
     }
   }
 
-  public async deleteAllCoinsFromDb(): Promise<DeletedResult> {
+  public async deleteAllCoinsFromDb(): Promise<DeleteResult> {
     try {
-      // Attempt to delete the coin with the specified symbol
       const deletedCount = (await CoinProvider.providerCollection.deleteMany(
         {}
       )) as number;
 
-      // Check if any document was deleted
       if (deletedCount > 0) {
         this.refreshRepository();
-        return { deleted: true, deletedCount };
       }
-
-      // If no documents were deleted, return a failure response
-      return { deleted: false };
+      return { deleted: false, deletedCount: 0 } as DeleteResult;
     } catch (error) {
       // Log the error message (you can use a logging library if preferred)
       console.error("Failed to delete coins from database:", error);
@@ -280,13 +282,11 @@ export class CoinProvider {
         error
       );
       // Return a consistent failure response
-      return { deleted: false };
+      return { deleted: false, deletedCount: 0 };
     }
   }
 
-  public async deleteCoinArrayFromDb(
-    symbols: string[]
-  ): Promise<DeletedResult> {
+  public async deleteCoinArrayFromDb(symbols: string[]): Promise<DeleteResult> {
     try {
       // Delete multiple documents based on an array of symbols
       const deletedCount = await CoinProvider.providerCollection.deleteMany({
@@ -294,10 +294,19 @@ export class CoinProvider {
       });
 
       // Check if any documents were deleted
+      console.log("%c---- LOGGING ----", DColors.cyan);
+      console.log("CoinProivder: deleteCoinArrayFromDb()");
+      console.log("%cSymbols To Delete: ", DColors.cyan, symbols);
+      console.log("%cDeleted Count: ", DColors.cyan, deletedCount);
+      //console.log("%cReturned Coins: ", DColors.cyan, symbols.length);
+      const deleteResult: DeleteResult = {
+        deleted: deletedCount > 0 ? true : false,
+        deletedCount: deletedCount,
+      };
       if (deletedCount && deletedCount > 0) {
-        this.refreshRepository();
-        return { deleted: true, deletedCount };
+        await this.refreshRepository();
       }
+      return deleteResult;
     } catch (error) {
       await notifyAboutFailedFunction(
         this.PROJECT,
@@ -306,9 +315,8 @@ export class CoinProvider {
         error
       );
       console.error("Failed to delete coins:", error);
+      return { deleted: false, deletedCount: 0 };
     }
-
-    return { deleted: false };
   }
   // #endregion
 
@@ -437,9 +445,10 @@ export class CoinProvider {
 
   public async addCoinArrayToBlackList(coins: Coin[]) {
     try {
-      await addCoinArrayToBlackList(coins);
+      const insertionResult = await addCoinArrayToBlackList(coins);
       const symbols = coins.map((c) => c.symbol);
-      await this.deleteCoinArrayFromDb(symbols);
+      const deletionResult = await this.deleteCoinArrayFromDb(symbols);
+      return { insertionResult, deletionResult };
     } catch (error) {
       console.log(error);
       await notifyAboutFailedFunction(
@@ -453,7 +462,8 @@ export class CoinProvider {
 
   public async deleteCoinFromBlackList(symbol: string) {
     try {
-      await deleteCoinFromBlackList(symbol);
+      const result = await deleteCoinFromBlackList(symbol);
+      return result;
     } catch (error) {
       console.log(error);
       await notifyAboutFailedFunction(
@@ -467,7 +477,8 @@ export class CoinProvider {
 
   public async deleteCoinArrayFromBlackList(symbols: string[]) {
     try {
-      await deleteCoinArrayFromBlackList(symbols);
+      const result = await deleteCoinArrayFromBlackList(symbols);
+      return result;
     } catch (error) {
       console.log(error);
       await notifyAboutFailedFunction(
@@ -724,7 +735,9 @@ export class CoinProvider {
       const coinGeckoId = coinGeckoIdMap.get(modifiedSymbol);
       if (coinGeckoId) {
         c.coinGeckoId = coinGeckoId;
+        c.coinGeckoMissing = false;
       } else {
+        c.coinGeckoMissing = true;
         coinGeckoMissing.push(c);
       }
     });
@@ -768,9 +781,11 @@ export class CoinProvider {
         coin.santimentName = santimentItem.name;
         coin.santimentTicker = santimentItem.ticker;
         coin.slug = santimentItem.slug;
+        coin.santimentMissing = false;
       } else {
         // Add to missing list if no match is found
         santimentMissing.push(coin);
+        coin.santimentMissing = true;
       }
     });
 
@@ -888,10 +903,17 @@ export class CoinProvider {
   public async moveSelectionToCoins(coins: Coin[]) {
     try {
       const symbols = coins.map((c) => c.symbol);
-      await this.addCoinsToCoinsColl(coins);
-      await this.deleteCoinArrayFromDb(symbols);
+      const insertionResult = await this.addCoinsToCoinsColl(coins);
+      const deletionResult = await this.deleteCoinArrayFromDb(symbols);
       await this.refreshRepository();
-      return Object.values(this.uniqueCoins.values);
+      const originCoins = Object.values(this.uniqueCoins.values);
+      console.log("---- LOGGING ----");
+      console.log(
+        "%cCoinProvider:moveSelectionToCoins coins after moving",
+        DColors.cyan,
+        originCoins.length
+      );
+      return { insertionResult, deletionResult };
     } catch (error) {
       await notifyAboutFailedFunction(
         this.PROJECT,
@@ -899,7 +921,7 @@ export class CoinProvider {
         "moveSelectionToCoins",
         error
       );
-      return null;
+      return [];
     }
   }
   // #endregion

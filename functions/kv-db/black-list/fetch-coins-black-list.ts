@@ -1,29 +1,25 @@
-import { _ } from "https://cdn.skypack.dev/lodash";
 import type { Coin } from "../../../models/shared/coin.ts";
 import { SpaceNames } from "../../../models/shared/space-names.ts";
 
-export async function fetchCoinsBlackList() {
-  let coins: Coin[] = [];
+export async function fetchCoinsBlackList(): Promise<Coin[]> {
+  const coins: Coin[] = [];
+  let kv;
+
   try {
-    const kv = await Deno.openKv();
+    kv = await Deno.openKv();
+    const iter = kv.list({ prefix: [SpaceNames.CoinBlackList] });
 
-    try {
-      const iter = kv.list({ prefix: [SpaceNames.CoinBlackList] });
-      for await (const entry of iter) {
-        coins.push(entry.value as Coin);
-      }
-
-      // Sort coins by symbol
-      coins = _.orderBy(coins, "symbol", "asc");
-    } catch (iterationError) {
-      console.error("Error while iterating over KV entries:", iterationError);
-      throw iterationError; // Re-throw to propagate the error further up
-    } finally {
-      kv.close(); // Ensure KV store is closed
+    for await (const entry of iter) {
+      coins.push(entry.value as Coin);
     }
-  } catch (kvError) {
-    console.error("Error opening KV store:", kvError);
-    throw kvError; // Re-throw to propagate the error further up
+
+    // Sort coins by symbol
+    coins.sort((a, b) => a.symbol.localeCompare(b.symbol));
+  } catch (error) {
+    console.error("Error in fetchCoinsBlackList:", error);
+    throw error; // Propagate the error further
+  } finally {
+    if (kv) kv.close(); // Ensure KV store is closed if it was opened
   }
 
   return coins;

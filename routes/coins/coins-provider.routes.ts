@@ -4,6 +4,7 @@ import {
   getBlackListCoins,
   getCoinGeckoMissingCoins,
   getSantimentMissingCoins,
+  moveCoinArrayToBlackList,
   moveCoinArrayToCoinsColl,
   moveCoinToBlackList,
   removeCoinArray,
@@ -18,8 +19,9 @@ router.post("/coins-provider/relocate-to-coins", moveCoinArrayToCoinsColl);
 router.delete("/coins-provider/delete/many", removeCoinArray);
 router.get("/black-list", getBlackListCoins);
 router.post("/black-list/add/one", moveCoinToBlackList);
+router.post("/black-list/add/many", moveCoinArrayToBlackList);
 router.delete("/black-list/remove/one", removeCoinFromBlackList);
-router.delete("black-list/remove/many", removeCoinArrayFromBlackList);
+router.delete("/black-list/remove/many", removeCoinArrayFromBlackList);
 router.put("/coins-provider/coin-gecko-missing", getCoinGeckoMissingCoins);
 router.put("/coins-provider/santiment-missing", getSantimentMissingCoins);
 

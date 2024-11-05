@@ -16,7 +16,7 @@ export const getAllCoins = (_req: any, res: any) => {
   }
 };
 
-export const moveCoinArrayToCoinsColl = (req: any, res: any) => {
+export const moveCoinArrayToCoinsColl = async (req: any, res: any) => {
   const coins = req.body;
   if (!coins) {
     return res.status(400).send("Bad Request: Invalid coins array structure");
@@ -24,7 +24,8 @@ export const moveCoinArrayToCoinsColl = (req: any, res: any) => {
   try {
     const coinProvider = CoinProvider.getInstance();
     if (coinProvider) {
-      res.status(200).send(coinProvider.moveSelectionToCoins(coins));
+      const result = await coinProvider.moveSelectionToCoins(coins);
+      res.status(200).send(result);
     } else {
       res.status(503).send("CoinProvider not initialized yet");
     }
@@ -38,7 +39,7 @@ export const moveCoinArrayToCoinsColl = (req: any, res: any) => {
   }
 };
 
-export const removeCoinArray = (req: any, res: any) => {
+export const removeCoinArray = async (req: any, res: any) => {
   const symbols = req.body;
   if (!symbols) {
     return res.status(400).send("Bad Request: Invalid symbols array structure");
@@ -46,7 +47,8 @@ export const removeCoinArray = (req: any, res: any) => {
   try {
     const coinProvider = CoinProvider.getInstance();
     if (coinProvider) {
-      res.status(200).send(coinProvider.deleteCoinArrayFromDb(symbols));
+      const result = await coinProvider.deleteCoinArrayFromDb(symbols);
+      res.status(200).send(result);
     } else {
       res.status(503).send("CoinProvider not initialized yet");
     }
