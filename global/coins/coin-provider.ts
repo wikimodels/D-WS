@@ -1,11 +1,6 @@
-// deno-lint-ignore-file no-explicit-any no-explicit-any no-explicit-any
+// deno-lint-ignore-file no-explicit-any no-explicit-any no-explicit-any no-explicit-any no-explicit-any no-explicit-any
 import { _ } from "https://cdn.skypack.dev/lodash";
 import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
-import {
-  MongoClient,
-  Collection,
-  Bson,
-} from "https://deno.land/x/mongo@v0.31.1/mod.ts";
 import { notifyAboutFailedFunction } from "../../functions/tg/notifications/failed-function.ts";
 
 import type { SantimentId } from "../../models/shared/santiment-id.ts";
@@ -13,24 +8,9 @@ import type { CoinGeckoId } from "../../models/shared/coin-gecko-id.ts";
 import { DColors } from "../../models/shared/colors.ts";
 import { Coin } from "./../../models/shared/coin.ts";
 import { Status } from "../../models/shared/status.ts";
-import { designateCategories } from "./shared/designate-categories.ts";
 import { notifyAboutCoinsRefresh } from "../../functions/tg/notifications/coin-refresh.ts";
-import { designateLinks } from "./shared/designate-links.ts";
-import { fetchCoinsBlackList } from "../../functions/kv-db/black-list/fetch-coins-black-list.ts";
-import { addCoinToBlackList } from "../../functions/kv-db/black-list/add-coin-to-black-list.ts";
-import { deleteCoinArrayFromBlackList } from "../../functions/kv-db/black-list/delete-coin-array-from-black-list.ts";
-import { deleteCoinFromBlackList } from "../../functions/kv-db/black-list/delete-coin-from-black-list.ts";
-import { addCoinArrayToBlackList } from "../../functions/kv-db/black-list/add-coin-array-to-black-list.ts";
-import { saveCoinArrayToCoinGeckoMissing } from "../../functions/kv-db/coin-gecko/save-coin-array-to-coin-gecko-missing.ts";
-import { fetchCoinGeckoMissingCoins } from "../../functions/kv-db/coin-gecko/fetch-coin-gecko-missing-coins.ts";
-import { deleteAllFromCoinGeckoMissing } from "../../functions/kv-db/coin-gecko/delete-all-from-coin-gecko-missing.ts";
-import { saveCoinArrayToSantimentMissing } from "../../functions/kv-db/santiment/save-coin-array-to-santiment-missing.ts";
-import { fetchSantimentMissingCoins } from "../../functions/kv-db/santiment/fetch-santiment-missing-coins.ts";
-import { deleteAllFromSantimentMissing } from "../../functions/kv-db/santiment/delete-all-from-santiment-missing.ts";
-import type {
-  InsertResult,
-  DeleteResult,
-} from "../../models/mongodb/operations.ts";
+import { CoinOperator } from "./coin-operator.ts";
+import { CoinCollections } from "../../models/shared/coin-collections.ts";
 
 const {
   BYBIT_PERP_TICKETS_URL,
@@ -42,16 +22,10 @@ const {
   SANTIMENT_API_URL,
   SANTIMENT_API_KEY,
   LOWEST_TURNOVER24H,
-  MONGO_DB,
 } = await load();
 
 export class CoinProvider {
   private static instance: CoinProvider;
-  private uniqueCoins: Map<string, Coin> = new Map();
-  private static dbClient: MongoClient;
-  private static providerCollection: Collection<Coin>;
-  private static basicCollection: Collection<Coin>;
-
   private readonly BYBIT_API_URL = BYBIT_PERP_TICKETS_URL;
   private readonly BINANCE_API_URL = BINANCE_PERP_TICKETS_URL;
   private readonly PROJECT = PROJECT_NAME;
@@ -62,437 +36,21 @@ export class CoinProvider {
   private readonly LOWEST_TURNOVER24H = parseFloat(LOWEST_TURNOVER24H);
   private readonly SANTIMENT_API_URL = SANTIMENT_API_URL;
   private readonly SANTIMENT_API_KEY = SANTIMENT_API_KEY;
-  private static MONGO_DB = MONGO_DB;
 
-  private constructor(coins: Coin[]) {
-    this.uniqueCoins = new Map(coins.map((coin) => [coin.symbol, coin]));
-  }
+  private constructor() {}
 
-  // #region UTIL FUNCTIONS
-  public static async initializeFromDb(): Promise<void> {
+  public static initializeInstance(): CoinProvider {
     if (!CoinProvider.instance) {
-      this.dbClient = new MongoClient();
-      await this.dbClient.connect(this.MONGO_DB);
-      const db = this.dbClient.database("general");
-      this.providerCollection = db.collection<Coin>("coin-provider");
-      this.basicCollection = db.collection<Coin>("coins");
-      const providerCoins = await this.fetchCoinsFromDb();
-      CoinProvider.instance = new CoinProvider(providerCoins);
-      console.log(
-        `%c${PROJECT_NAME}:CoinProvider ---> initialized...`,
-        DColors.yellow
-      );
+      CoinProvider.instance = new CoinProvider();
+      // Additional async setup or initialization if needed
     }
-  }
-
-  public static getInstance(): CoinProvider {
-    if (!CoinProvider.instance) {
-      throw new Error("CoinProvider has not been initialized yet.");
-    }
+    console.log("%cCoinProvider ---> initialized...", DColors.magenta);
     return CoinProvider.instance;
-  }
-
-  private async refreshRepository(): Promise<void> {
-    this.uniqueCoins.clear();
-    const coins = await CoinProvider.fetchCoinsFromDb();
-    this.uniqueCoins = new Map(coins.map((coin) => [coin.symbol, coin]));
-    //TODO
-    console.log("%cCoinProvider:refreshRepository() --> done", DColors.magenta);
   }
 
   private rateLimitDelay(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
-
-  private assignCategories(coins: Coin[], lowestTurnover24h: number) {
-    return designateCategories(coins, lowestTurnover24h);
-  }
-
-  private assignLinks(coins: Coin[]) {
-    coins = designateLinks(coins);
-    return coins;
-  }
-
-  public getAllCoins(): Coin[] {
-    return Array.from(this.uniqueCoins.values()).sort((a, b) =>
-      a.symbol.localeCompare(b.symbol)
-    );
-  }
-  // #endregion
-
-  //#region MONGO DB OPERATIONS
-  private static async fetchCoinsFromDb(): Promise<Coin[]> {
-    try {
-      // Attempt to fetch all coins from the database
-      return await this.providerCollection.find({}).toArray();
-    } catch (error) {
-      console.error("Failed to fetch coins from the database:", error);
-
-      await notifyAboutFailedFunction(
-        "D-WS",
-        "CoinProvider",
-        "fetchCoinsFromDb",
-        error
-      );
-
-      return [];
-    }
-  }
-
-  private static async fetchOriginCoinsFromDb(): Promise<Coin[]> {
-    try {
-      // Attempt to fetch all coins from the database
-      return await this.basicCollection.find({}).toArray();
-    } catch (error) {
-      console.error("Failed to fetch coins from the database:", error);
-
-      await notifyAboutFailedFunction(
-        "D-WS",
-        "CoinProvider",
-        "fetchBasicCoinsFromDb",
-        error
-      );
-
-      return [];
-    }
-  }
-
-  public async addCoinToDb(newCoin: Coin): Promise<InsertResult> {
-    try {
-      const res = (await CoinProvider.providerCollection.insertOne(
-        newCoin
-      )) as Bson.ObjectId | null;
-
-      if (res) {
-        this.refreshRepository();
-        return {
-          inserted: true,
-          insertedCount: 1,
-        } as InsertResult;
-      }
-
-      return { inserted: false, insertedCount: 0 };
-    } catch (error) {
-      console.error("Failed to add coin to database:", error);
-      await notifyAboutFailedFunction(
-        this.PROJECT,
-        this.CLASS_NAME,
-        "addCoinToDb",
-        error
-      );
-      return { inserted: false, insertedCount: 0 };
-    }
-  }
-
-  public async addCoinArrayToDb(coins: Coin[]): Promise<InsertResult> {
-    try {
-      const res = await CoinProvider.providerCollection.insertMany(coins);
-      const insertedIds = Object.values(res.insertedIds).map((id) =>
-        (id as Bson.ObjectId).toString()
-      );
-      this.refreshRepository();
-      return { inserted: true, insertedCount: insertedIds.length };
-    } catch (error) {
-      console.error("Failed to insert coins:", error);
-      await notifyAboutFailedFunction(
-        this.PROJECT,
-        this.CLASS_NAME,
-        "addCoinArrayToDb",
-        error
-      );
-      return { inserted: false, insertedCount: 0 };
-    }
-  }
-
-  public async addCoinsToCoinsColl(coins: Coin[]): Promise<InsertResult> {
-    try {
-      const res = await CoinProvider.basicCollection.insertMany(coins);
-      const insertedIds = Object.values(res.insertedIds).map((id) =>
-        (id as Bson.ObjectId).toString()
-      );
-      const insertResult = {
-        inserted: true,
-        insertedCount: insertedIds.length,
-      };
-
-      console.log("---- LOGGING ----");
-      console.log(
-        "%cCoinProvider:addCoinsToCoinsColl() insertion result",
-        DColors.yellow,
-        insertResult
-      );
-      return {
-        inserted: true,
-        insertedCount: insertedIds.length,
-      } as InsertResult;
-    } catch (error) {
-      console.error("Failed to insert coins:", error);
-      await notifyAboutFailedFunction(
-        this.PROJECT,
-        this.CLASS_NAME,
-        "addCoinArrayToDb",
-        error
-      );
-      return { inserted: false, insertedCount: 0 } as InsertResult;
-    }
-  }
-
-  public async deleteCoinFromDb(symbol: string): Promise<DeleteResult> {
-    try {
-      const deletedCount = await CoinProvider.providerCollection.deleteOne({
-        symbol,
-      });
-      await this.refreshRepository();
-
-      const deleteResult: DeleteResult = {
-        deleted: deletedCount > 0 ? true : false,
-        deletedCount: deletedCount,
-      };
-      return deleteResult;
-    } catch (error) {
-      console.error("Error in deleteCoinFromDb:", error);
-
-      await notifyAboutFailedFunction(
-        this.PROJECT,
-        this.CLASS_NAME,
-        "deleteCoinFromDb",
-        error
-      );
-      return { deleted: false, deletedCount: 0 } as DeleteResult;
-    }
-  }
-
-  public async deleteAllCoinsFromDb(): Promise<DeleteResult> {
-    try {
-      const deletedCount = (await CoinProvider.providerCollection.deleteMany(
-        {}
-      )) as number;
-
-      if (deletedCount > 0) {
-        this.refreshRepository();
-      }
-      return { deleted: false, deletedCount: 0 } as DeleteResult;
-    } catch (error) {
-      // Log the error message (you can use a logging library if preferred)
-      console.error("Failed to delete coins from database:", error);
-      await notifyAboutFailedFunction(
-        this.PROJECT,
-        this.CLASS_NAME,
-        "deleteAllCoinsFromDb",
-        error
-      );
-      // Return a consistent failure response
-      return { deleted: false, deletedCount: 0 };
-    }
-  }
-
-  public async deleteCoinArrayFromDb(symbols: string[]): Promise<DeleteResult> {
-    try {
-      // Delete multiple documents based on an array of symbols
-      const deletedCount = await CoinProvider.providerCollection.deleteMany({
-        symbol: { $in: symbols },
-      });
-
-      // Check if any documents were deleted
-      console.log("%c---- LOGGING ----", DColors.cyan);
-      console.log("CoinProivder: deleteCoinArrayFromDb()");
-      console.log("%cSymbols To Delete: ", DColors.cyan, symbols);
-      console.log("%cDeleted Count: ", DColors.cyan, deletedCount);
-      //console.log("%cReturned Coins: ", DColors.cyan, symbols.length);
-      const deleteResult: DeleteResult = {
-        deleted: deletedCount > 0 ? true : false,
-        deletedCount: deletedCount,
-      };
-      if (deletedCount && deletedCount > 0) {
-        await this.refreshRepository();
-      }
-      return deleteResult;
-    } catch (error) {
-      await notifyAboutFailedFunction(
-        this.PROJECT,
-        this.CLASS_NAME,
-        "deleteCoinArrayFromDb",
-        error
-      );
-      console.error("Failed to delete coins:", error);
-      return { deleted: false, deletedCount: 0 };
-    }
-  }
-  // #endregion
-
-  // #region COIN GECKO
-  private async saveCoinArrayToCoinGeckoMissing(coins: Coin[]) {
-    try {
-      await saveCoinArrayToCoinGeckoMissing(coins);
-    } catch (error) {
-      console.error("Failed to save CoinGecko missing coins:", error);
-      await notifyAboutFailedFunction(
-        this.PROJECT,
-        this.CLASS_NAME,
-        "saveCoinArrayToCoinGeckoMissing",
-        error
-      );
-    }
-  }
-
-  public async fetchCoinGeckoMissingCoins() {
-    try {
-      return await fetchCoinGeckoMissingCoins();
-    } catch (error) {
-      console.error("Failed to fetch CoinGeckoMissing coins:", error);
-      await notifyAboutFailedFunction(
-        this.PROJECT,
-        this.CLASS_NAME,
-        "fetchCoinGeckoMissing",
-        error
-      );
-    }
-  }
-
-  public async deleteAllFromCoinGeckoMissing() {
-    try {
-      const res = await deleteAllFromCoinGeckoMissing();
-      return res;
-    } catch (error) {
-      console.log(error);
-      await notifyAboutFailedFunction(
-        this.PROJECT,
-        this.CLASS_NAME,
-        "deleteAllFromCoinGeckoMissing",
-        error
-      );
-    }
-  }
-
-  // #endregion
-
-  // #region SANTIMENT
-  private async saveCoinArrayToSantimentMissing(coins: Coin[]) {
-    try {
-      await saveCoinArrayToSantimentMissing(coins);
-    } catch (error) {
-      console.error("Failed to save Santiment missing coins:", error);
-      await notifyAboutFailedFunction(
-        this.PROJECT,
-        this.CLASS_NAME,
-        "saveSantimentMissing",
-        error
-      );
-    }
-  }
-
-  public async fetchSantimentMissingCoins() {
-    try {
-      return await fetchSantimentMissingCoins();
-    } catch (error) {
-      console.error("Failed to fetch SantimentMissing coins:", error);
-      await notifyAboutFailedFunction(
-        this.PROJECT,
-        this.CLASS_NAME,
-        "fetchSantimentMissing",
-        error
-      );
-    }
-  }
-
-  public async deleteAllFromSantimentMissing() {
-    try {
-      await deleteAllFromSantimentMissing();
-    } catch (error) {
-      console.log(error);
-      await notifyAboutFailedFunction(
-        this.PROJECT,
-        this.CLASS_NAME,
-        "deleteAllFromSantimentMissing",
-        error
-      );
-    }
-  }
-
-  // #endregion
-
-  // #region BLACK LIST
-  public async getCoinsBlackList() {
-    try {
-      const coins = await fetchCoinsBlackList();
-      return coins;
-    } catch (error) {
-      console.error("Failed to save CoinGecko missing coins:", error);
-      await notifyAboutFailedFunction(
-        this.PROJECT,
-        this.CLASS_NAME,
-        "fetchCoinBlackList",
-        error
-      );
-      return [];
-    }
-  }
-
-  public async addCoinToBlackList(coin: Coin) {
-    try {
-      await addCoinToBlackList(coin);
-      await this.deleteCoinFromDb(coin.symbol);
-    } catch (error) {
-      console.log(error);
-      await notifyAboutFailedFunction(
-        this.PROJECT,
-        this.CLASS_NAME,
-        "addCoinToBlackList",
-        error
-      );
-    }
-  }
-
-  public async addCoinArrayToBlackList(coins: Coin[]) {
-    try {
-      const insertionResult = await addCoinArrayToBlackList(coins);
-      const symbols = coins.map((c) => c.symbol);
-      const deletionResult = await this.deleteCoinArrayFromDb(symbols);
-      return { insertionResult, deletionResult };
-    } catch (error) {
-      console.log(error);
-      await notifyAboutFailedFunction(
-        this.PROJECT,
-        this.CLASS_NAME,
-        "addCoinArrayToBlackList",
-        error
-      );
-    }
-  }
-
-  public async deleteCoinFromBlackList(symbol: string) {
-    try {
-      const result = await deleteCoinFromBlackList(symbol);
-      return result;
-    } catch (error) {
-      console.log(error);
-      await notifyAboutFailedFunction(
-        this.PROJECT,
-        this.CLASS_NAME,
-        "deleteCoinFromBlackList",
-        error
-      );
-    }
-  }
-
-  public async deleteCoinArrayFromBlackList(symbols: string[]) {
-    try {
-      const result = await deleteCoinArrayFromBlackList(symbols);
-      return result;
-    } catch (error) {
-      console.log(error);
-      await notifyAboutFailedFunction(
-        this.PROJECT,
-        this.CLASS_NAME,
-        "deleteCoinsFromBlackList",
-        error
-      );
-    }
-  }
-
-  // #endregion
-
-  // #region PROCEDURE FUNCTIONS
 
   private async fetchBybitData() {
     try {
@@ -612,12 +170,17 @@ export class CoinProvider {
   }
 
   private async sortOutUniqueCoins(coins: Coin[]) {
-    const originCoins: Coin[] = await CoinProvider.fetchOriginCoinsFromDb();
+    const originCoins: Coin[] = await CoinOperator.getAllCoins(
+      CoinCollections.CoinRepo
+    );
     console.log(
       `${this.PROJECT}:${this.CLASS_NAME} Origin Coins ---> `,
       originCoins.length
     );
-    const blackListCoins: Coin[] = await this.getCoinsBlackList();
+
+    const blackListCoins: Coin[] = await CoinOperator.getAllCoins(
+      CoinCollections.CoinBlackList
+    );
 
     const originSymbols = new Set(originCoins.map((coin: Coin) => coin.symbol));
     const blackListSymbols = new Set(
@@ -627,12 +190,6 @@ export class CoinProvider {
     const sortedCoins = coins.filter(
       (item) =>
         !originSymbols.has(item.symbol) && !blackListSymbols.has(item.symbol)
-    );
-    //TODO
-    console.log(
-      `%c${this.PROJECT}:${this.CLASS_NAME} ---> SORTED COINS done `,
-      DColors.cyan,
-      sortedCoins.length
     );
     return sortedCoins;
   }
@@ -717,7 +274,6 @@ export class CoinProvider {
   }
 
   private async assignCoinGeckoIds(coins: Coin[]) {
-    const coinGeckoMissing: Coin[] = [];
     //TODO;
     console.log(
       `%c${this.PROJECT}:${this.CLASS_NAME} ---> Unique Coins from CoinGecko `,
@@ -738,24 +294,15 @@ export class CoinProvider {
         c.coinGeckoMissing = false;
       } else {
         c.coinGeckoMissing = true;
-        coinGeckoMissing.push(c);
       }
     });
 
-    await this.deleteAllFromCoinGeckoMissing();
-    await this.saveCoinArrayToCoinGeckoMissing(coinGeckoMissing);
-    console.log(
-      `%c${this.PROJECT}:${this.CLASS_NAME} ---> CoinGecko Missing `,
-      DColors.white,
-      coinGeckoMissing.map((c) => c.symbol)
-    );
     return coins;
   }
 
   private async assignSantimentIds(coins: Coin[]): Promise<Coin[]> {
     if (!coins || coins.length === 0) return [];
 
-    const santimentMissing: Coin[] = [];
     let santimentIds: SantimentId[] = [];
 
     try {
@@ -783,29 +330,9 @@ export class CoinProvider {
         coin.slug = santimentItem.slug;
         coin.santimentMissing = false;
       } else {
-        // Add to missing list if no match is found
-        santimentMissing.push(coin);
         coin.santimentMissing = true;
       }
     });
-
-    // Log missing Santiment entries
-    if (santimentMissing.length > 0) {
-      console.log(
-        `%c${this.PROJECT}:${this.CLASS_NAME} ---> Santiment Missing `,
-        DColors.green,
-        santimentMissing.map((s) => s.symbol)
-      );
-    }
-
-    // Attempt to save missing entries with error handling
-    try {
-      await this.deleteAllFromSantimentMissing();
-      await this.saveCoinArrayToSantimentMissing(santimentMissing);
-    } catch (error) {
-      console.error("Failed to save missing Santiment data:", error);
-      return coins;
-    }
 
     return coins;
   }
@@ -883,9 +410,13 @@ export class CoinProvider {
   }
 
   private async saveUniqueCoinsToDb(coins: Coin[]) {
-    const deletedRes = await this.deleteAllCoinsFromDb();
-    const addedRes = await this.addCoinArrayToDb(coins);
-    await this.refreshRepository();
+    const deletedRes = await CoinOperator.deleteCoins(
+      CoinCollections.CoinProvider
+    );
+    const addedRes = await CoinOperator.addCoins(
+      CoinCollections.CoinProvider,
+      coins
+    );
     console.log(
       `%c${this.PROJECT}:${this.CLASS_NAME} ---> Final Saving: Clean Db Res `,
       DColors.cyan,
@@ -897,34 +428,6 @@ export class CoinProvider {
       addedRes
     );
   }
-  // #endregion
-
-  // #region BUSINESS LOGIC
-  public async moveSelectionToCoins(coins: Coin[]) {
-    try {
-      const symbols = coins.map((c) => c.symbol);
-      const insertionResult = await this.addCoinsToCoinsColl(coins);
-      const deletionResult = await this.deleteCoinArrayFromDb(symbols);
-      await this.refreshRepository();
-      const originCoins = Object.values(this.uniqueCoins.values);
-      console.log("---- LOGGING ----");
-      console.log(
-        "%cCoinProvider:moveSelectionToCoins coins after moving",
-        DColors.cyan,
-        originCoins.length
-      );
-      return { insertionResult, deletionResult };
-    } catch (error) {
-      await notifyAboutFailedFunction(
-        this.PROJECT,
-        this.CLASS_NAME,
-        "moveSelectionToCoins",
-        error
-      );
-      return [];
-    }
-  }
-  // #endregion
 
   //----------------------------
   // ✅ REFRESHMENT PROCEDURE
@@ -939,8 +442,8 @@ export class CoinProvider {
       coins = await this.assignCoinGeckoIds(coins);
       coins = await this.assignSantimentIds(coins);
       coins = await this.enrichWithCoinGeckoData(coins);
-      coins = this.assignCategories(coins, this.LOWEST_TURNOVER24H);
-      coins = this.assignLinks(coins);
+      coins = CoinOperator.assignCategories(coins, this.LOWEST_TURNOVER24H);
+      coins = CoinOperator.assingLinks(coins);
       await this.saveUniqueCoinsToDb(coins);
       await notifyAboutCoinsRefresh(this.PROJECT, this.CLASS_NAME, "");
       return { finish: true };

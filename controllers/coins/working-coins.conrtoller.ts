@@ -1,10 +1,10 @@
 // deno-lint-ignore-file no-explicit-any
-import { contributeCoinsToWork } from "../functions/kv-db/working-coins/contirbute-coins-to-work.ts";
-import { fetchAllCoinsAtWork } from "../functions/kv-db/working-coins/fetch-all-coins-at-work.ts";
-import { removeAllCoinsFromWork } from "../functions/kv-db/working-coins/remove-all-coins-from-work.ts";
-import { removeCoinBatchFromWork } from "../functions/kv-db/working-coins/remove-coin-batch-from-work.ts";
+import { contributeCoinsToWork } from "../../functions/kv-db/working-coins/contirbute-coins-to-work.ts";
+import { fetchAllCoinsAtWork } from "../../functions/kv-db/working-coins/fetch-all-coins-at-work.ts";
+import { removeAllCoinsFromWork } from "../../functions/kv-db/working-coins/remove-all-coins-from-work.ts";
+import { removeCoinBatchFromWork } from "../../functions/kv-db/working-coins/remove-coin-batch-from-work.ts";
 
-import type { Coin } from "../models/shared/coin.ts";
+import type { Coin } from "../../models/shared/coin.ts";
 
 export const getAllCoinsAtWork = async (_req: any, res: any) => {
   try {

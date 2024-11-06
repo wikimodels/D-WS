@@ -1,11 +1,12 @@
 import { Application } from "npm:express@4.18.2";
-
 import initializeApp from "./app/initialize-app.ts";
 import initializeCoinRepository from "./app/intialize-coin-repository.ts";
 import { DColors } from "./models/shared/colors.ts";
-import initializeCoinProveider from "./app/initialize-coin-provider.ts";
-initializeCoinRepository()
-  .then(() => initializeCoinProveider())
+import initializeCoinProvider from "./app/initialize-coin-provider.ts";
+import initializeCoinOperator from "./app/intialize-coin-operator.ts";
+initializeCoinOperator()
+  .then(() => initializeCoinRepository())
+  .then(() => initializeCoinProvider())
   .then(() => initializeApp())
   .then((app: Application) => {
     //runBinanceWSConnections();

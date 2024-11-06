@@ -1,40 +1,30 @@
 // deno-lint-ignore-file no-explicit-any
-import {
-  MongoClient,
-  Collection,
-  Bson,
-} from "https://deno.land/x/mongo@v0.31.1/mod.ts";
 import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
 import type { Coin } from "../../models/shared/coin.ts";
 import { sendTgGeneralMessage } from "../../functions/tg/send-general-tg-msg.ts";
 import { formatFailedDataNotificationMsg } from "../../functions/tg/formatters/coin-msg/failed-data-notification.ts";
-import { formatFailedUpdatesNotificationMsg } from "../../functions/tg/formatters/coin-msg/failed-updates-notification.ts";
 
 import { DColors } from "../../models/shared/colors.ts";
 import { notifyAboutFailedFunction } from "../../functions/tg/notifications/failed-function.ts";
-import { designateCategories } from "./shared/designate-categories.ts";
 import { notifyAboutTurnover24hUpdateCompletion } from "../../functions/tg/notifications/turnover24h-update-complete.ts";
-import type {
-  DeleteResult,
-  InsertResult,
-  ModifyResult,
-} from "../../models/mongodb/operations.ts";
+import { CoinOperator } from "./coin-operator.ts";
+import { CoinCollections } from "../../models/shared/coin-collections.ts";
+import type { ModifyResult } from "../../models/mongodb/operations.ts";
 
 const {
-  MONGO_DB,
   PROJECT_NAME,
   BYBIT_FUTURES_KLINE,
   BINANCE_FUTURES_KLINE,
   LOWEST_TURNOVER24H,
 } = await load();
 
-type SuccessfulResult = {
+type SuccessResult = {
   success: true;
   symbol: string;
   data: { symbol: string; turnover24h: number };
 };
 
-type FailedResult = {
+type FailureResult = {
   symbol: string;
   error: any;
 };
@@ -51,85 +41,25 @@ type KlineData = {
   turnover24h: number;
 };
 
-type Updates = {
-  successfullUpdates: string[];
-  failedUpdates: string[];
-};
-
 export class CoinRepository {
-  private static instance: CoinRepository;
-  private coins: Map<string, Coin>;
-  private static dbClient: MongoClient;
-  private static readonly dbName = "general";
-  private static readonly collectionName = "coins";
-  private static collection: Collection<Coin>;
-  private static readonly MONGO_DB = MONGO_DB;
   private readonly PROJECT_NAME = PROJECT_NAME;
   private readonly CLASS_NAME = "CoinRepository";
   private readonly BYBIT_FUTURES_KLINE = BYBIT_FUTURES_KLINE;
   private readonly BINANCE_FUTURES_KLINE = BINANCE_FUTURES_KLINE;
   private readonly LOWEST_TURNOVER24H = parseFloat(LOWEST_TURNOVER24H);
+  private static instance: CoinRepository;
 
-  // #region UTILS
-  private constructor(coins: Coin[]) {
-    this.coins = new Map(coins.map((coin) => [coin.symbol, coin]));
+  private constructor() {
+    // Private constructor to prevent direct instantiation
   }
 
-  public static async initializeFromDb(): Promise<void> {
+  public static initializeInstance(): CoinRepository {
     if (!CoinRepository.instance) {
-      this.dbClient = new MongoClient();
-      await this.dbClient.connect(this.MONGO_DB);
-      const db = this.dbClient.database(this.dbName);
-      this.collection = db.collection<Coin>(this.collectionName);
-      const coins = await this.fetchCoinsFromDb();
-      CoinRepository.instance = new CoinRepository(coins);
-      console.log("%cCoinRepository ---> initialized...", DColors.cyan);
+      CoinRepository.instance = new CoinRepository();
+      // Additional async setup or initialization if needed
     }
-  }
-
-  public static getInstance(): CoinRepository {
-    if (!CoinRepository.instance) {
-      throw new Error("CoinRepository has not been initialized yet.");
-    }
+    console.log("%cCoinOperator ---> initialized...", DColors.cyan);
     return CoinRepository.instance;
-  }
-
-  private async refreshRepository(): Promise<void> {
-    const coins = await CoinRepository.fetchCoinsFromDb();
-    this.coins = new Map(coins.map((coin) => [coin.symbol, coin]));
-  }
-
-  public getAllCoins(): Coin[] {
-    return Array.from(this.coins.values()).sort((a, b) =>
-      a.symbol.localeCompare(b.symbol)
-    );
-  }
-
-  public getBybitCoins(): Coin[] {
-    return Array.from(this.coins.values()).filter(
-      (coin) => coin.exchange === "by" || coin.exchange === "biby"
-    );
-  }
-
-  public getBinanceCoins(): Coin[] {
-    return Array.from(this.coins.values()).filter(
-      (coin) => coin.exchange === "bi"
-    );
-  }
-
-  private async sendFailedUpdatesNotification(
-    projectName: string,
-    className: string,
-    fnName: string,
-    data: string[]
-  ) {
-    const errorMsg = formatFailedUpdatesNotificationMsg(
-      projectName,
-      className,
-      fnName,
-      data
-    );
-    await sendTgGeneralMessage(errorMsg);
   }
 
   private async sendFailedDataNotification(
@@ -146,158 +76,6 @@ export class CoinRepository {
     );
     await sendTgGeneralMessage(errorMsg);
   }
-
-  private assignCategories(coins: Coin[], lowestTurnover24h: number) {
-    return designateCategories(coins, lowestTurnover24h);
-  }
-
-  // #endregion
-
-  // #region MONGO DB OPERATIONS
-  public static async fetchCoinsFromDb(): Promise<Coin[]> {
-    try {
-      return await this.collection.find({}).toArray();
-    } catch (error) {
-      await notifyAboutFailedFunction(
-        "D-WS",
-        "CoinRepository",
-        "fetchCoinsFromDb",
-        error
-      );
-      console.error("Error in fetchCoinsFromDb:", error);
-      throw new Error("Failed to fetch coins from the database");
-    }
-  }
-
-  public async updateCoinInDb(
-    symbol: string,
-    updatedData: Partial<Coin>
-  ): Promise<ModifyResult> {
-    try {
-      // Attempt to update the coin in the database
-      const { modifiedCount } = await CoinRepository.collection.updateOne(
-        { symbol },
-        { $set: updatedData }
-      );
-
-      await this.refreshRepository();
-
-      return {
-        modified: modifiedCount > 0,
-        modifiedCount: modifiedCount,
-      } as ModifyResult;
-    } catch (error) {
-      // Log the error with context information
-      console.error("Error in updateCoinInDb:", error);
-      await notifyAboutFailedFunction(
-        this.PROJECT_NAME,
-        this.CLASS_NAME,
-        "updateCoinInDb",
-        error
-      );
-      // Rethrow the error so that the calling code can handle it
-      throw new Error("Failed to update coin in the database");
-    }
-  }
-
-  public async addCoinToDb(newCoin: Coin): Promise<InsertResult> {
-    try {
-      const res = (await CoinRepository.collection.insertOne(
-        newCoin
-      )) as Bson.ObjectId | null;
-      await this.refreshRepository();
-      return {
-        inserted: res != undefined,
-        insertedCount: 1,
-      };
-    } catch (error) {
-      console.error("Error in addCoinToDb:", error);
-      await notifyAboutFailedFunction(
-        this.PROJECT_NAME,
-        this.CLASS_NAME,
-        "addCoinToDb",
-        error
-      );
-      throw new Error("Failed to add coin to the database");
-    }
-  }
-
-  public async addCoinArrayToDb(coins: Coin[]): Promise<InsertResult> {
-    try {
-      const res = await CoinRepository.collection.insertMany(coins);
-      const insertedIds = Object.values(res.insertedIds).map((id) =>
-        parseInt((id as Bson.ObjectId).toString(), 16)
-      );
-      await this.refreshRepository();
-
-      return { inserted: res != undefined, insertedCount: insertedIds.length };
-    } catch (error) {
-      // Log the error with contextual information
-      console.error("Failed to insert coins in addCoinArrayToDb:", error);
-
-      // Optionally, notify monitoring system about the failed operation
-      await notifyAboutFailedFunction(
-        this.PROJECT_NAME,
-        this.CLASS_NAME,
-        "addCoinArrayToDb",
-        error
-      );
-
-      // Return failure result
-      return { inserted: false, insertedCount: 0 } as InsertResult;
-    }
-  }
-
-  public async deleteCoinFromDb(symbol: string): Promise<DeleteResult> {
-    try {
-      const deletedCount = await CoinRepository.collection.deleteOne({
-        symbol,
-      });
-      await this.refreshRepository();
-
-      return { deleted: deletedCount > 0, deletedCount };
-    } catch (error) {
-      console.error("Error in deleteCoinFromDb:", error);
-
-      await notifyAboutFailedFunction(
-        this.PROJECT_NAME,
-        this.CLASS_NAME,
-        "deleteCoinFromDb",
-        error
-      );
-      return { deleted: false, deletedCount: 0 };
-    }
-  }
-
-  public async deleteCoinArrayFromDb(symbols: string[]): Promise<DeleteResult> {
-    try {
-      // Delete multiple documents based on an array of symbols
-      const deletedCount = await CoinRepository.collection.deleteMany({
-        symbol: { $in: symbols },
-      });
-
-      // Refresh the repository after deletion (if needed)
-      await this.refreshRepository();
-
-      const deleteResult: DeleteResult = {
-        deletedCount: deletedCount,
-        deleted: deletedCount > 0,
-      };
-      return deleteResult;
-    } catch (error) {
-      console.error("Failed to delete coins:", error);
-      await notifyAboutFailedFunction(
-        this.PROJECT_NAME,
-        this.CLASS_NAME,
-        "deleteCoinFromDb",
-        error
-      );
-      return { deleted: false, deletedCount: 0 };
-    }
-  }
-  // #endregion
-
-  // #region TURNOVER24H UDPDATE FUNCTIONS
 
   private async fetchBybitKlineData(
     symbol: string,
@@ -460,8 +238,8 @@ export class CoinRepository {
   }
 
   private async runPromiseBatch(promises: Promise<Result>[]): Promise<{
-    successfulData: SuccessfulResult[];
-    failedData: FailedResult[];
+    successfulData: SuccessResult[];
+    failedData: FailureResult[];
   }> {
     // Execute all promises
     const results = await Promise.all(promises);
@@ -472,7 +250,7 @@ export class CoinRepository {
       .map((result) => ({
         symbol: result.symbol,
         data: result.data,
-      })) as SuccessfulResult[];
+      })) as SuccessResult[];
 
     const failedData = results
       .filter((result) => !result.success)
@@ -491,7 +269,7 @@ export class CoinRepository {
     }));
   }
 
-  private updateCoinCategories(
+  private updateCoinsTurnover24h(
     coins: Coin[],
     turnover24hs: { symbol: string; turnover24h: number }[]
   ) {
@@ -504,34 +282,29 @@ export class CoinRepository {
     return coins;
   }
 
-  private async saveUpdatedCategories(coins: Coin[]): Promise<Updates> {
-    const successfullUpdates: string[] = [];
-    const failedUpdates: string[] = [];
-
-    for (const coin of coins) {
-      try {
-        await this.updateCoinInDb(coin.symbol, {
-          category: coin.category,
-          turnover24h: coin.turnover24h,
-        });
-        successfullUpdates.push(coin.symbol);
-      } catch (error) {
-        console.error(
-          `Failed to update category in DB for ${coin.symbol}:`,
-          error
-        );
-        failedUpdates.push(coin.symbol);
-      }
-    }
-
-    return { successfullUpdates, failedUpdates };
+  private updateCoinsCategories(coins: Coin[], LOWEST_TURNOVER24H: number) {
+    coins = CoinOperator.assignCategories(coins, LOWEST_TURNOVER24H);
+    return coins;
   }
 
-  // #endregion
+  private async saveUpdates(coins: Coin[]): Promise<ModifyResult> {
+    const updateData = coins.map((c) => {
+      return {
+        symbol: c.symbol,
+        updatedData: {
+          turnover24h: c.turnover24h,
+          category: c.category,
+        },
+      };
+    });
+    const modifyResult = await CoinOperator.updateManyCoins(
+      CoinCollections.CoinRepo,
+      updateData
+    );
+    return modifyResult;
+  }
 
-  // #region ✅ BINANCE TURNOVER24H UPDATE
-
-  public async runBinanceTurnover24hUpdate(
+  private async runBinanceTurnover24hUpdate(
     coins: Coin[],
     interval: string,
     limit: number
@@ -543,9 +316,9 @@ export class CoinRepository {
     );
     const result = await this.runPromiseBatch(binancePromises);
     const turnover24hData = this.getTurnover24Data(result.successfulData);
-    coins = this.updateCoinCategories(coins, turnover24hData);
-    coins = this.assignCategories(coins, this.LOWEST_TURNOVER24H);
-    const updates = await this.saveUpdatedCategories(coins);
+    coins = this.updateCoinsTurnover24h(coins, turnover24hData);
+    coins = this.updateCoinsCategories(coins, this.LOWEST_TURNOVER24H);
+    const modifyResult = await this.saveUpdates(coins);
 
     if (result.failedData.length > 0) {
       const symbols = result.failedData.map((d) => d.symbol);
@@ -556,28 +329,19 @@ export class CoinRepository {
         symbols
       );
     }
-    if (updates.failedUpdates.length > 0) {
-      this.sendFailedUpdatesNotification(
-        this.PROJECT_NAME,
-        this.CLASS_NAME,
-        "runBinanceTurnover24hUpdate",
-        updates.failedUpdates
-      );
-    }
+
     console.log(
       `%c${this.PROJECT_NAME}:${this.CLASS_NAME} ---> Binance Successfull Kline Fetch: ${result.successfulData.length}`,
       DColors.cyan
     );
     console.log(
-      `%c${this.PROJECT_NAME}:${this.CLASS_NAME} ---> Binance Successfull Turnover24h Updates: ${updates.successfullUpdates.length}`,
-      DColors.green
+      `%c${this.PROJECT_NAME}:${this.CLASS_NAME} ---> Binance Successfull Turnover24h Updates:}`,
+      DColors.green,
+      modifyResult
     );
   }
-  // #endregion
 
-  // #region ✅ BYBIT TURNOVER UPDATE
-
-  public async runBybitTurnover24hUpdate(
+  private async runBybitTurnover24hUpdate(
     coins: Coin[],
     interval: string,
     limit: number
@@ -585,9 +349,9 @@ export class CoinRepository {
     const bybitPromises = this.createBybitKlinePromises(coins, interval, limit);
     const result = await this.runPromiseBatch(bybitPromises);
     const turnover24hData = this.getTurnover24Data(result.successfulData);
-    coins = this.updateCoinCategories(coins, turnover24hData);
-    coins = this.assignCategories(coins, this.LOWEST_TURNOVER24H);
-    const updates = await this.saveUpdatedCategories(coins);
+    coins = this.updateCoinsTurnover24h(coins, turnover24hData);
+    coins = this.updateCoinsCategories(coins, this.LOWEST_TURNOVER24H);
+    const modifyResult = await this.saveUpdates(coins);
 
     if (result.failedData.length > 0) {
       const symbols = result.failedData.map((d) => d.symbol);
@@ -598,30 +362,27 @@ export class CoinRepository {
         symbols
       );
     }
-    if (updates.failedUpdates.length > 0) {
-      this.sendFailedUpdatesNotification(
-        this.PROJECT_NAME,
-        this.CLASS_NAME,
-        "runBybitTurnover24hUpdate",
-        updates.failedUpdates
-      );
-    }
+
     console.log(
       `%c${this.PROJECT_NAME}:${this.CLASS_NAME} ---> Bybit Successfull Kline Fetch: ${result.successfulData.length}`,
       DColors.cyan
     );
     console.log(
-      `%c${this.PROJECT_NAME}:${this.CLASS_NAME} ---> Bybit Successfull Turnover24h Updates: ${updates.successfullUpdates.length}`,
-      DColors.green
+      `%c${this.PROJECT_NAME}:${this.CLASS_NAME} ---> Bybit Successfull Turnover24h Updates:}`,
+      DColors.green,
+      modifyResult
     );
   }
-  // #endregion
 
-  // #region UPDATE PROCEDURE
-  public async runTurnover24hUpdatePocedure() {
+  private async runTurnover24hUpdatePocedure() {
     try {
-      const binanceCoins = this.getBinanceCoins();
-      const bybitCoins = this.getBybitCoins();
+      const coins = await CoinOperator.getAllCoins(CoinCollections.CoinRepo);
+
+      const binanceCoins = coins.filter((c) => c.coinExchange == "bi");
+      const bybitCoins = coins.filter(
+        (c) => c.coinExchange == "bу" || c.coinExchange == "biby"
+      );
+
       await this.runBinanceTurnover24hUpdate(binanceCoins, "1d", 1);
       await this.runBybitTurnover24hUpdate(bybitCoins, "D", 1);
       console.log(
@@ -639,7 +400,6 @@ export class CoinRepository {
     }
     await notifyAboutTurnover24hUpdateCompletion(this.PROJECT_NAME);
   }
-  // #endregion
 
   // Function to schedule data refresh every three days
   public scheduleRefresh() {

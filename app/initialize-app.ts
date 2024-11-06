@@ -5,17 +5,17 @@ import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts"; //
 
 import binanceWsRoutes from "../routes/ws/binance-ws.routes.ts";
 import bybitWsRoutes from "../routes/ws/bybit-ws.routes.ts";
-import coinRoutes from "../routes/coins/coins.routes.ts";
 import coinsAtWorkRoutes from "../routes/coins/working-coins.routes.ts";
 import triggeredAlertsRoutes from "../routes/alerts/triggered-alerts.routes.ts";
 import archivedAlertsRoutes from "../routes/alerts/archived-alerts.routes.ts";
 import alertsRoutes from "../routes/alerts/alerts.routes.ts";
+import coinsOperatorRoutes from "../routes/coins/coins-operator.routes.ts";
 import coinsProviderRoutes from "../routes/coins/coins-provider.routes.ts";
 
 const { ORIGIN_I, ORIGIN_II } = await load();
 const allowedOrigins = [ORIGIN_I, ORIGIN_II];
 
-const initializeApp = async (): Promise<Application> => {
+const initializeApp = (): Promise<Application> => {
   const app = express();
 
   app.use(express.json());
@@ -26,7 +26,6 @@ const initializeApp = async (): Promise<Application> => {
   );
 
   // Register routes
-  app.use("/api", coinRoutes);
   app.use("/api", binanceWsRoutes);
   app.use("/api", bybitWsRoutes);
   app.use("/api", coinsAtWorkRoutes);
@@ -34,6 +33,7 @@ const initializeApp = async (): Promise<Application> => {
   app.use("/api", archivedAlertsRoutes);
   app.use("/api", alertsRoutes);
   app.use("/api", coinsProviderRoutes);
+  app.use("/api", coinsOperatorRoutes);
 
   //   app.get("/alerts", async (_req: any, res: any) => {
   //     try {

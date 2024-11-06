@@ -1,14 +1,13 @@
 import { CoinProvider } from "../global/coins/coin-provider.ts";
 
-const initializeCoinProveider = async () => {
+const initializeCoinProvider = async () => {
   try {
-    await CoinProvider.initializeFromDb();
-    const provider = CoinProvider.getInstance();
-    await provider.scheduleRefresh();
+    const coinProivder = await CoinProvider.initializeInstance();
+    await coinProivder.scheduleRefresh();
   } catch (error) {
     console.error("Failed to initialize CoinRepository:", error);
     throw error;
   }
 };
 
-export default initializeCoinProveider;
+export default initializeCoinProvider;

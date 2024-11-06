@@ -4,7 +4,7 @@ import {
   addCoinsToWork,
   deleteAllCoinsFromWork,
   deleteCoinBatchFromWork,
-} from "../../controllers/working-coins.conrtoller.ts";
+} from "../../controllers/coins/working-coins.conrtoller.ts";
 
 const router = express.Router();
 
