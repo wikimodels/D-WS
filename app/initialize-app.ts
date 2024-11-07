@@ -5,7 +5,6 @@ import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts"; //
 
 import binanceWsRoutes from "../routes/ws/binance-ws.routes.ts";
 import bybitWsRoutes from "../routes/ws/bybit-ws.routes.ts";
-import coinsAtWorkRoutes from "../routes/coins/working-coins.routes.ts";
 import triggeredAlertsRoutes from "../routes/alerts/triggered-alerts.routes.ts";
 import archivedAlertsRoutes from "../routes/alerts/archived-alerts.routes.ts";
 import alertsRoutes from "../routes/alerts/alerts.routes.ts";
@@ -28,7 +27,6 @@ const initializeApp = (): Promise<Application> => {
   // Register routes
   app.use("/api", binanceWsRoutes);
   app.use("/api", bybitWsRoutes);
-  app.use("/api", coinsAtWorkRoutes);
   app.use("/api", triggeredAlertsRoutes);
   app.use("/api", archivedAlertsRoutes);
   app.use("/api", alertsRoutes);

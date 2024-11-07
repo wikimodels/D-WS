@@ -1,6 +1,6 @@
-// deno-lint-ignore-file no-explicit-any
+// deno-lint-ignore-file no-explicit-any no-explicit-any
 import { CoinOperator } from "../../global/coins/coin-operator.ts";
-import type { Coin } from "../../models/shared/coin.ts";
+import type { Coin } from "../../models/coin/coin.ts";
 
 export const getAllCoins = async (req: any, res: any) => {
   try {
@@ -18,14 +18,9 @@ export const getAllCoins = async (req: any, res: any) => {
 };
 
 export const deleteCoins = async (req: any, res: any) => {
-  const symbols = req.body;
-  const collectionName = req.query.collectionName;
-  if (
-    !symbols ||
-    !collectionName ||
-    !Array.isArray(symbols) ||
-    symbols.some((symbol) => typeof symbol !== "string")
-  ) {
+  const { symbols } = req.body;
+  const { collectionName } = req.query;
+  if (!symbols || !collectionName || !Array.isArray(symbols)) {
     return res
       .status(400)
       .send(
@@ -49,7 +44,7 @@ export const deleteCoins = async (req: any, res: any) => {
   }
 };
 
-export const updateCoin = async (req: any, res: any) => {
+export const addCoin = async (req: any, res: any) => {
   const coin: Coin = req.body;
   const collectionName = req.query.collectionName;
   if (!coin || !coin.symbol || !collectionName) {
@@ -61,9 +56,30 @@ export const updateCoin = async (req: any, res: any) => {
   }
 
   try {
+    const insertResult = await CoinOperator.addCoin(collectionName, coin);
+    res.status(200).send(insertResult);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error saving the coin to the database");
+  }
+};
+
+export const updateCoin = async (req: any, res: any) => {
+  const coin: Coin = req.body;
+  const { collectionName, symbol } = req.query;
+
+  if (!coin || !coin.symbol || !collectionName) {
+    return res
+      .status(400)
+      .send(
+        "Bad Request: Invalid update parameters (either 'coin' or 'collectionName')"
+      );
+  }
+
+  try {
     const modiyResult = await CoinOperator.updateCoin(
       collectionName,
-      coin.symbol,
+      symbol,
       coin
     );
     res.status(200).send(modiyResult);
@@ -81,8 +97,7 @@ export const moveCoins = async (req: any, res: any) => {
     !coins ||
     !sourceCollection ||
     !targetCollection ||
-    !Array.isArray(coins) ||
-    coins.some((symbol) => typeof symbol !== "string")
+    !Array.isArray(coins)
   ) {
     return res
       .status(400)

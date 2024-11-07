@@ -1,6 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
-import type { Coin } from "../../models/shared/coin.ts";
+import type { Coin } from "../../models/coin/coin.ts";
 import { sendTgGeneralMessage } from "../../functions/tg/send-general-tg-msg.ts";
 import { formatFailedDataNotificationMsg } from "../../functions/tg/formatters/coin-msg/failed-data-notification.ts";
 
@@ -8,7 +8,7 @@ import { DColors } from "../../models/shared/colors.ts";
 import { notifyAboutFailedFunction } from "../../functions/tg/notifications/failed-function.ts";
 import { notifyAboutTurnover24hUpdateCompletion } from "../../functions/tg/notifications/turnover24h-update-complete.ts";
 import { CoinOperator } from "./coin-operator.ts";
-import { CoinCollections } from "../../models/shared/coin-collections.ts";
+import { CoinsCollections } from "../../models/coin/coins-collections.ts";
 import type { ModifyResult } from "../../models/mongodb/operations.ts";
 
 const {
@@ -298,7 +298,7 @@ export class CoinRepository {
       };
     });
     const modifyResult = await CoinOperator.updateManyCoins(
-      CoinCollections.CoinRepo,
+      CoinsCollections.CoinRepo,
       updateData
     );
     return modifyResult;
@@ -339,6 +339,7 @@ export class CoinRepository {
       DColors.green,
       modifyResult
     );
+    return modifyResult;
   }
 
   private async runBybitTurnover24hUpdate(
@@ -372,22 +373,36 @@ export class CoinRepository {
       DColors.green,
       modifyResult
     );
+    return modifyResult;
   }
 
   private async runTurnover24hUpdatePocedure() {
     try {
-      const coins = await CoinOperator.getAllCoins(CoinCollections.CoinRepo);
+      const coins = await CoinOperator.getAllCoins(CoinsCollections.CoinRepo);
 
       const binanceCoins = coins.filter((c) => c.coinExchange == "bi");
       const bybitCoins = coins.filter(
         (c) => c.coinExchange == "bу" || c.coinExchange == "biby"
       );
 
-      await this.runBinanceTurnover24hUpdate(binanceCoins, "1d", 1);
-      await this.runBybitTurnover24hUpdate(bybitCoins, "D", 1);
+      const binanceModifyResult = await this.runBinanceTurnover24hUpdate(
+        binanceCoins,
+        "1d",
+        1
+      );
+      const bybitModifyResult = await this.runBybitTurnover24hUpdate(
+        bybitCoins,
+        "D",
+        1
+      );
       console.log(
         "%cTurnover24h Update Procedure ---> successfully done...",
         DColors.magenta
+      );
+      await notifyAboutTurnover24hUpdateCompletion(
+        this.PROJECT_NAME,
+        bybitModifyResult,
+        binanceModifyResult
       );
     } catch (error) {
       console.log(error);
@@ -398,7 +413,6 @@ export class CoinRepository {
         error
       );
     }
-    await notifyAboutTurnover24hUpdateCompletion(this.PROJECT_NAME);
   }
 
   // Function to schedule data refresh every three days

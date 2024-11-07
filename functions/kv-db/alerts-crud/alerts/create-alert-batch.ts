@@ -1,6 +1,7 @@
 import { addCoinCategory } from "../../../../global/coins/add-coin-category.ts";
 import { addCoinExchange } from "../../../../global/coins/add-coin-exchange.ts";
-import { addLinks } from "../../../../global/coins/add-links.ts";
+import { addCoinLinks } from "../../../../global/coins/add-coin-links.ts";
+
 import type { AlertObj } from "../../../../models/alerts/alert-obj.ts";
 import type { Coin } from "../../../../models/shared/coin.ts";
 import { UnixToTime } from "../../../utils/time-converter.ts";
@@ -14,7 +15,7 @@ export async function createAlertBatch(alerts: AlertObj[], coins: Coin[]) {
       alert.creationTime = new Date().getTime();
       alert.isActive = true;
       alert = addCoinExchange(coins, alert);
-      alert = addLinks(alert);
+      alert = addCoinLinks(alert);
       alert = addCoinCategory(coins, alert);
       alert.activationTimeStr = UnixToTime(new Date().getTime());
       const res = await createAlertObj(alert);

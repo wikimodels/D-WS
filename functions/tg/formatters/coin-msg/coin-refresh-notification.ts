@@ -1,5 +1,9 @@
 // import { UnixToNamedTimeRu } from "../../../utils/time-converter.ts";
 
+import type {
+  InsertResult,
+  DeleteResult,
+} from "../../../../models/mongodb/operations.ts";
 import { UnixToNamedTimeRu } from "../../../utils/time-converter.ts";
 
 // export function formatCoinRefreshNotificationMsg(
@@ -25,12 +29,14 @@ import { UnixToNamedTimeRu } from "../../../utils/time-converter.ts";
 export function formatCoinRefreshNotificationMsg(
   projectName: string,
   className: string,
-  fnName: string
+  result: { insertResult: InsertResult; deleteResult: DeleteResult }
 ) {
   const timestamp = UnixToNamedTimeRu(new Date().getTime());
 
   const msg = `
-<b>🔄 ${projectName}:${className} Coin Refresh Done 🔄</b>
+<b>🔄 ${projectName}:${className} Coin Refresh Done</b>
+<b>Deleted</b> ${result.deleteResult.deletedCount}
+<b>Inserted</b> ${result.insertResult.insertedCount}
 ━━━━━━━━━━━━━ 
 🕒 <b>Time:</b> <i>${timestamp}</i>`;
   return msg;

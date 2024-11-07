@@ -1,7 +1,5 @@
 import { _ } from "https://cdn.skypack.dev/lodash";
-import { logKlineRepoState } from "../../functions/kv-db/ws-health/log-kline-repo-state.ts";
 import type { KlineObj } from "../../models/shared/kline.ts";
-import { UnixToTime } from "../../functions/utils/time-converter.ts";
 const MAX_CANDLES = 1;
 
 const candleData = new Map<string, KlineObj[]>();

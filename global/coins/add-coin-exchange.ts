@@ -1,5 +1,5 @@
 import { AlertObj } from "../../models/alerts/alert-obj.ts";
-import { Coin } from "../../models/shared/coin.ts";
+import type { Coin } from "../../models/coin/coin.ts";
 import { Exchange } from "../../models/shared/exchange.ts";
 
 export function addCoinExchange(coins: Coin[], alertObj: AlertObj) {

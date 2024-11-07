@@ -3,14 +3,15 @@ import { _ } from "https://cdn.skypack.dev/lodash";
 import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
 import { notifyAboutFailedFunction } from "../../functions/tg/notifications/failed-function.ts";
 
-import type { SantimentId } from "../../models/shared/santiment-id.ts";
-import type { CoinGeckoId } from "../../models/shared/coin-gecko-id.ts";
+import type { SantimentId } from "../../models/coin/santiment-id.ts";
+import type { CoinGeckoId } from "../../models/coin/coin-gecko-id.ts";
 import { DColors } from "../../models/shared/colors.ts";
-import { Coin } from "./../../models/shared/coin.ts";
+import { Coin } from "../../models/coin/coin.ts";
 import { Status } from "../../models/shared/status.ts";
 import { notifyAboutCoinsRefresh } from "../../functions/tg/notifications/coin-refresh.ts";
 import { CoinOperator } from "./coin-operator.ts";
-import { CoinCollections } from "../../models/shared/coin-collections.ts";
+import { CoinsCollections } from "../../models/coin/coins-collections.ts";
+import type { RefreshmentResult } from "../../models/mongodb/operations.ts";
 
 const {
   BYBIT_PERP_TICKETS_URL,
@@ -171,7 +172,7 @@ export class CoinProvider {
 
   private async sortOutUniqueCoins(coins: Coin[]) {
     const originCoins: Coin[] = await CoinOperator.getAllCoins(
-      CoinCollections.CoinRepo
+      CoinsCollections.CoinRepo
     );
     console.log(
       `${this.PROJECT}:${this.CLASS_NAME} Origin Coins ---> `,
@@ -179,7 +180,7 @@ export class CoinProvider {
     );
 
     const blackListCoins: Coin[] = await CoinOperator.getAllCoins(
-      CoinCollections.CoinBlackList
+      CoinsCollections.CoinBlackList
     );
 
     const originSymbols = new Set(originCoins.map((coin: Coin) => coin.symbol));
@@ -409,30 +410,31 @@ export class CoinProvider {
     return coins;
   }
 
-  private async saveUniqueCoinsToDb(coins: Coin[]) {
-    const deletedRes = await CoinOperator.deleteCoins(
-      CoinCollections.CoinProvider
+  private async saveUniqueCoinsToDb(coins: Coin[]): Promise<RefreshmentResult> {
+    const deleteResult = await CoinOperator.deleteCoins(
+      CoinsCollections.CoinProvider
     );
-    const addedRes = await CoinOperator.addCoins(
-      CoinCollections.CoinProvider,
+    const insertResult = await CoinOperator.addCoins(
+      CoinsCollections.CoinProvider,
       coins
     );
     console.log(
       `%c${this.PROJECT}:${this.CLASS_NAME} ---> Final Saving: Clean Db Res `,
       DColors.cyan,
-      deletedRes
+      deleteResult
     );
     console.log(
       `%c${this.PROJECT}:${this.CLASS_NAME} ---> Final Saving: Insertion into Db Res `,
       DColors.green,
-      addedRes
+      insertResult
     );
+    return { insertResult, deleteResult };
   }
 
   //----------------------------
   // ✅ REFRESHMENT PROCEDURE
   //----------------------------
-  public async runRefreshmentPocedure() {
+  public async runRefreshmentPocedure(): Promise<RefreshmentResult> {
     try {
       let coins: Coin[] = [];
       const binanceData = await this.fetchBinanceData();
@@ -444,10 +446,10 @@ export class CoinProvider {
       coins = await this.enrichWithCoinGeckoData(coins);
       coins = CoinOperator.assignCategories(coins, this.LOWEST_TURNOVER24H);
       coins = CoinOperator.assingLinks(coins);
-      await this.saveUniqueCoinsToDb(coins);
-      await notifyAboutCoinsRefresh(this.PROJECT, this.CLASS_NAME, "");
-      return { finish: true };
-    } catch (error) {
+      const result = await this.saveUniqueCoinsToDb(coins);
+      await notifyAboutCoinsRefresh(this.PROJECT, this.CLASS_NAME, result);
+      return result;
+    } catch (error: any) {
       console.log(error);
       await notifyAboutFailedFunction(
         this.PROJECT,
@@ -455,6 +457,7 @@ export class CoinProvider {
         "runRefreshmentPocedure",
         error
       );
+      throw Error("CoinProvider:runRefreshmentProcedure --> Error ", error);
     }
   }
   // Function to schedule data refresh every three days

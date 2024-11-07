@@ -10,15 +10,16 @@ import { updateAlert } from "../functions/kv-db/alerts-crud/alerts/update-alert.
 import { UnixToTime } from "../functions/utils/time-converter.ts";
 import { addCoinCategory } from "../global/coins/add-coin-category.ts";
 import { addCoinExchange } from "../global/coins/add-coin-exchange.ts";
-import { addLinks } from "../global/coins/add-links.ts";
+import { addCoinLinks } from "../global/coins/add-coin-links.ts";
+import { CoinOperator } from "../global/coins/coin-operator.ts";
 import { CoinRepository } from "../global/coins/coin-repository.ts";
 import type { AlertObj } from "../models/alerts/alert-obj.ts";
-import type { Coin } from "../models/shared/coin.ts";
+import { CoinsCollections } from "../models/coin/coins-collections.ts";
+import type { Coin } from "../models/coin/coin.ts";
 
 export const addAlert = () => async (req: any, res: any) => {
   try {
-    const coinsRepo = CoinRepository.getInstance();
-    const coins = coinsRepo.getAllCoins();
+    const coins = await CoinOperator.getAllCoins(CoinsCollections.CoinRepo);
 
     let alert: AlertObj = req.body;
     alert.id = crypto.randomUUID();
@@ -26,7 +27,7 @@ export const addAlert = () => async (req: any, res: any) => {
     alert.isActive = true;
     alert.isTv = false;
     alert = addCoinExchange(coins, alert);
-    alert = addLinks(alert);
+    alert = addCoinLinks(alert);
     alert = addCoinCategory(coins, alert);
     alert.activationTimeStr = UnixToTime(new Date().getTime());
 

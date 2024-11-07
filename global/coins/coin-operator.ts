@@ -13,7 +13,7 @@ import type {
   DeleteResult,
   MoveResult,
 } from "../../models/mongodb/operations.ts";
-import type { Coin } from "../../models/shared/coin.ts";
+import type { Coin } from "../../models/coin/coin.ts";
 import { DColors } from "../../models/shared/colors.ts";
 import { designateCategories } from "./shared/designate-categories.ts";
 import { designateLinks } from "./shared/designate-links.ts";
@@ -70,6 +70,39 @@ export class CoinOperator {
     }
   }
 
+  public static async addCoin(
+    collectionName: string,
+    coin: Coin
+  ): Promise<InsertResult> {
+    try {
+      const collection = this.getCollection(collectionName);
+      const res = await collection.insertOne(coin);
+
+      // Extract and convert ObjectIds to strings
+      const insertedId = (res as Bson.ObjectId).toString();
+
+      // Return a successful InsertResult object
+      return {
+        inserted: insertedId != undefined,
+        insertedCount: 1,
+      } as InsertResult;
+    } catch (error) {
+      const errorMsg = "CoinOperator:addCoin() ---> Failed to insert document";
+      console.error(errorMsg, error);
+
+      // Notify about the failed function with context
+      await notifyAboutFailedFunction(
+        this.PROJECT_NAME,
+        this.CLASS_NAME,
+        "addCoins",
+        error
+      );
+
+      // Return a failed InsertResult object
+      throw new Error(errorMsg);
+    }
+  }
+
   public static async addCoins(
     collectionName: string,
     coins: Coin[]
@@ -111,10 +144,13 @@ export class CoinOperator {
     symbols?: string[]
   ): Promise<DeleteResult> {
     try {
+      //TODO
+      console.log("Symbols from CoinOperator ---> ", symbols);
       const collection = this.getCollection(collectionName);
       const filter =
         symbols && symbols.length > 0 ? { symbol: { $in: symbols } } : {};
-
+      //TODO
+      console.log("Filter ---> ", filter);
       const deletedCount = await collection.deleteMany(filter);
 
       return { deleted: deletedCount > 0, deletedCount };
@@ -127,18 +163,6 @@ export class CoinOperator {
 
       throw new Error(errorMsg);
     }
-  }
-
-  private static async notifyAboutError(
-    functionName: string,
-    error: Error
-  ): Promise<void> {
-    await notifyAboutFailedFunction(
-      this.PROJECT_NAME,
-      this.CLASS_NAME,
-      functionName,
-      error
-    );
   }
 
   public static async updateCoin(
@@ -266,5 +290,17 @@ export class CoinOperator {
   public static assingLinks(coins: Coin[]) {
     coins = designateLinks(coins);
     return coins;
+  }
+
+  private static async notifyAboutError(
+    functionName: string,
+    error: Error
+  ): Promise<void> {
+    await notifyAboutFailedFunction(
+      this.PROJECT_NAME,
+      this.CLASS_NAME,
+      functionName,
+      error
+    );
   }
 }

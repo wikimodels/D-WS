@@ -6,3 +6,8 @@ export type MoveResult = {
   insertCount: number;
   deleteCount: number;
 };
+
+export type RefreshmentResult = {
+  insertResult: InsertResult;
+  deleteResult: DeleteResult;
+};

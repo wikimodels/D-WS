@@ -1,7 +1,7 @@
 import { AlertObj } from "../../models/alerts/alert-obj.ts";
 import { Exchange } from "../../models/shared/exchange.ts";
 
-export function addLinks(alertObj: AlertObj) {
+export function addCoinLinks(alertObj: AlertObj) {
   alertObj.logoLink = `assets/logo/${alertObj.symbol
     .replace("USDT", "")
     .toLowerCase()}.svg`;

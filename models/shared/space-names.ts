@@ -3,8 +3,4 @@ export enum SpaceNames {
   TriggeredAlerts = "TriggeredAlerts",
   ArchivedAlerts = "ArchivedAlerts",
   WsConnections = "WsConnections",
-  WorkingCoins = "WorkingCoins",
-  CoinGeckoMissing = "CoinGeckoMissing",
-  SantimentMissing = "SantimentMissing",
-  CoinBlackList = "CoinBlackList",
 }
