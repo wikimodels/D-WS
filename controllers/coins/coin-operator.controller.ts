@@ -66,8 +66,12 @@ export const addCoin = async (req: any, res: any) => {
 
 export const updateCoin = async (req: any, res: any) => {
   const coin: Coin = req.body;
-  const { collectionName, symbol } = req.query;
-
+  const collectionName = req.query.collectionName;
+  const symbol = req.query.symbol;
+  //TODO:
+  console.log("CollectionName ", collectionName);
+  console.log("Symbol ", symbol);
+  console.log("Coin ", coin);
   if (!coin || !coin.symbol || !collectionName) {
     return res
       .status(400)

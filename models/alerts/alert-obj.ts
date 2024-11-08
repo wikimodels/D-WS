@@ -14,7 +14,6 @@ export interface AlertObj {
   price: number;
   high: number;
   low: number;
-  mainImgUrl?: string;
   imgUrls?: string[];
   isActive: boolean;
   isTv?: boolean;

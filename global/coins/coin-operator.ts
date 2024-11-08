@@ -17,6 +17,8 @@ import type { Coin } from "../../models/coin/coin.ts";
 import { DColors } from "../../models/shared/colors.ts";
 import { designateCategories } from "./shared/designate-categories.ts";
 import { designateLinks } from "./shared/designate-links.ts";
+import { ObjectId } from "https://deno.land/x/web_bson@v0.2.5/mod.ts";
+import { filterUpdateData } from "./shared/filter-update-data.ts";
 
 const { MONGO_DB, PROJECT_NAME } = await load();
 
@@ -171,15 +173,21 @@ export class CoinOperator {
     updatedData: Partial<Coin>
   ): Promise<ModifyResult> {
     try {
+      const filteredData = filterUpdateData(updatedData);
       const collection = this.getCollection(collectionName);
-      const { modifiedCount } = await collection.updateOne(
-        { symbol },
-        { $set: updatedData }
-      );
-
+      const filter = { symbol: symbol };
+      const update = { $set: filteredData };
+      const res = await collection.updateOne(filter, update);
+      //TODO
+      const coll = await collection.find({ symbol: symbol }).toArray();
+      console.log("filters data +++>>> ", filteredData);
+      console.log("updateOneMethod:CollectionName: ", collectionName);
+      console.log("updateOneMethod:symbol: ", symbol);
+      console.log("updateOneMethod:CoinToUpdate: ", updatedData);
+      console.log("updateOneMethod:CoinToUpdate: ", res);
       return {
-        modified: modifiedCount > 0,
-        modifiedCount: modifiedCount,
+        modified: res.modifiedCount > 0,
+        modifiedCount: res.modifiedCount,
       } as ModifyResult;
     } catch (error) {
       const errorMsg =

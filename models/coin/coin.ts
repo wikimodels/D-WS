@@ -1,4 +1,4 @@
-import type { Status } from "./status.ts";
+import type { Status } from "../shared/status.ts";
 
 export interface Coin {
   santimentTicker?: string;

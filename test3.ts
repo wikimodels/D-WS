@@ -1,44 +1,27 @@
-const yahooFinanceUrl =
-  "https://query1.finance.yahoo.com/v8/finance/chart/^GSPC?interval=15m&range=1d";
+import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
+// deno-lint-ignore-file no-explicit-any
+import {
+  MongoClient,
+  Database,
+  Collection,
+  Bson,
+} from "https://deno.land/x/mongo@v0.31.1/mod.ts";
 
-async function fetchYahooFinanceSP500Data() {
-  try {
-    const response = await fetch(yahooFinanceUrl);
+const { MONGO_DB } = await load();
+const dbClient = new MongoClient();
+await dbClient.connect(MONGO_DB);
+const db = dbClient.database("general");
+const coll = db.collection("coin-repo");
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    // Check for valid data in response
-    if (!data.chart || !data.chart.result) {
-      throw new Error("Data not found.");
-    }
-
-    // Parse and format the data
-    const result = data.chart.result[0];
-    const timestamps = result.timestamp;
-    const indicators = result.indicators.quote[0];
-
-    const formattedData = timestamps.map(
-      (timestamp: number, index: number) => ({
-        datetime: new Date(timestamp * 1000).toISOString(),
-        open: indicators.open[index],
-        high: indicators.high[index],
-        low: indicators.low[index],
-        close: indicators.close[index],
-        volume: indicators.volume[index],
-      })
-    );
-
-    console.log(formattedData.slice(0, 5)); // Display the first 5 entries
-  } catch (error) {
-    console.error(
-      "Failed to fetch S&P 500 data from Yahoo Finance:",
-      error.message
-    );
-  }
+try {
+  // Await the result of `toArray()` to log the documents
+  const shit = await coll.find({}).toArray();
+  console.log(shit);
+  const res = await coll.updateOne(
+    { symbol: "BTCUSDT" },
+    { $set: { status: "shit" } }
+  );
+  console.log(res);
+} catch (error) {
+  console.error("Failed to retrieve documents:", error);
 }
-
-fetchYahooFinanceSP500Data();
