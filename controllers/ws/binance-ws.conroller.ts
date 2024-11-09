@@ -1,20 +1,22 @@
 // deno-lint-ignore-file no-explicit-any
 import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
-import { CoinRepository } from "../global/coins/coin-repository.ts";
-import { TF } from "../models/shared/timeframes.ts";
-import { BinanceWSConnManager } from "../ws/binance/bi-ws-conn-manager.ts";
-import { DColors } from "../models/shared/colors.ts";
+import { CoinRepository } from "../../global/coins/coin-repository.ts";
+import { TF } from "../../models/shared/timeframes.ts";
+import { BinanceWSConnManager } from "../../ws/binance/bi-ws-conn-manager.ts";
+import { DColors } from "../../models/shared/colors.ts";
+import { CoinOperator } from "../../global/coins/coin-operator.ts";
+import { CoinsCollections } from "../../models/coin/coins-collections.ts";
 
 export const { BINANCE_WS_TF } = await load();
 let ws: BinanceWSConnManager | null = null;
 
-const runBinanceWSConnections = () => {
+const runBinanceWSConnections = async () => {
   // Define variables to hold instances
-  const coinRepo = CoinRepository.getInstance();
-  const coins = coinRepo.getBinanceCoins();
+  const coins = await CoinOperator.getAllCoins(CoinsCollections.CoinRepo);
+  const binanceCoins = coins.filter((c) => c.coinExchange == "bi");
 
   // Initialize BinanceWSConnManager with coins and timeframe
-  ws = new BinanceWSConnManager(coins, BINANCE_WS_TF as TF);
+  ws = new BinanceWSConnManager(binanceCoins, BINANCE_WS_TF as TF);
   ws.initializeConnections();
   console.log(
     "%cBinance WebSocket connections --> getting initialized...",

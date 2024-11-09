@@ -1,4 +1,4 @@
-import { AlertObj } from "../../../../models/alerts/alert-obj.ts";
+import { AlertObj } from "../../../../models/alerts/alert.ts";
 import { UnixToNamedTimeRu } from "../../../utils/time-converter.ts";
 
 export function formateTriggeredAlertsMsg(alertObjs: AlertObj[]) {

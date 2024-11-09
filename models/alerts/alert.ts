@@ -1,12 +1,9 @@
 import { Exchange } from "../shared/exchange.ts";
 
-export interface AlertObj {
+export interface Alert {
   id: string;
-  symbol: string;
-  coinExchange?: Exchange;
-  coinCategory?: string;
   action: string;
-  keyLevelName: string;
+  alertName: string;
   description?: string;
   creationTime?: number;
   activationTime?: number;
@@ -14,12 +11,17 @@ export interface AlertObj {
   price: number;
   high: number;
   low: number;
-  imgUrls?: string[];
+  tvImgUrls?: string[];
   isActive: boolean;
   isTv?: boolean;
+  symbol: string;
+  exchange: string;
+  category: string;
+  status: string;
   tvLink?: string;
   cgLink?: string;
-  exchBiLink?: string;
-  exchByLink?: string;
-  logoLink?: string;
+  bybitExch?: string;
+  binanceExch?: string;
+  image_url?: string;
+  coinExchange?: string;
 }

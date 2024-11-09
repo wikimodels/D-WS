@@ -1,4 +1,4 @@
-import type { AlertObj } from "../../../models/alerts/alert-obj.ts";
+import type { AlertObj } from "../../../models/alerts/alert.ts";
 import { formateTriggeredAlertsMsg } from "../formatters/alerts-msg/triggered-alerts-msg.ts";
 import { sendTgGeneralMessage } from "../send-general-tg-msg.ts";
 

@@ -178,13 +178,7 @@ export class CoinOperator {
       const filter = { symbol: symbol };
       const update = { $set: filteredData };
       const res = await collection.updateOne(filter, update);
-      //TODO
-      const coll = await collection.find({ symbol: symbol }).toArray();
-      console.log("filters data +++>>> ", filteredData);
-      console.log("updateOneMethod:CollectionName: ", collectionName);
-      console.log("updateOneMethod:symbol: ", symbol);
-      console.log("updateOneMethod:CoinToUpdate: ", updatedData);
-      console.log("updateOneMethod:CoinToUpdate: ", res);
+
       return {
         modified: res.modifiedCount > 0,
         modifiedCount: res.modifiedCount,
@@ -213,8 +207,9 @@ export class CoinOperator {
       let modifiedCount = 0;
 
       for (const coin of coins) {
+        const filteredData = filterUpdateData(coin);
         const filter = { symbol: coin.symbol };
-        const update = { $set: coin.updatedData };
+        const update = { $set: filteredData };
 
         const { modifiedCount: count } = await collection.updateOne(
           filter,
