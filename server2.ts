@@ -4,9 +4,11 @@ import initializeCoinRepository from "./app/intialize-coin-repository.ts";
 import { DColors } from "./models/shared/colors.ts";
 import initializeCoinProvider from "./app/initialize-coin-provider.ts";
 import initializeCoinOperator from "./app/intialize-coin-operator.ts";
+import initializeAlertTvOperator from "./app/intialize-alert-tv-operator.ts";
 initializeCoinOperator()
   .then(() => initializeCoinRepository())
   .then(() => initializeCoinProvider())
+  .then(() => initializeAlertTvOperator())
   .then(() => initializeApp())
   .then((app: Application) => {
     //runBinanceWSConnections();

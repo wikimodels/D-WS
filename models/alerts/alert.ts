@@ -12,6 +12,7 @@ export interface Alert {
   high: number;
   low: number;
   tvImgUrls?: string[];
+  imgUrl: string;
   isActive: boolean;
   isTv?: boolean;
   symbol: string;

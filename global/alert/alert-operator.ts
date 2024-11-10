@@ -155,10 +155,7 @@ export class AlertOperator {
     let kv;
     let deletedCount = 0;
     let insertCount = 0;
-    //TODO:
-    console.log("SOURCE COLL --> ", sourceCollection);
-    console.log("TARGET COLL --> ", targetCollection);
-    console.log("Alerts --> ", alerts);
+
     try {
       kv = await Deno.openKv();
 

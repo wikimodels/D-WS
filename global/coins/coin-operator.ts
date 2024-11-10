@@ -146,13 +146,10 @@ export class CoinOperator {
     symbols?: string[]
   ): Promise<DeleteResult> {
     try {
-      //TODO
-      console.log("Symbols from CoinOperator ---> ", symbols);
       const collection = this.getCollection(collectionName);
       const filter =
         symbols && symbols.length > 0 ? { symbol: { $in: symbols } } : {};
-      //TODO
-      console.log("Filter ---> ", filter);
+
       const deletedCount = await collection.deleteMany(filter);
 
       return { deleted: deletedCount > 0, deletedCount };

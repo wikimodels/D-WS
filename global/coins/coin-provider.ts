@@ -275,12 +275,6 @@ export class CoinProvider {
   }
 
   private async assignCoinGeckoIds(coins: Coin[]) {
-    //TODO;
-    console.log(
-      `%c${this.PROJECT}:${this.CLASS_NAME} ---> Unique Coins from CoinGecko `,
-      DColors.magenta,
-      coins.length
-    );
     const coinGeckoIds: CoinGeckoId[] = await this.fetchCoinGeckoIds();
 
     const coinGeckoIdMap = new Map(

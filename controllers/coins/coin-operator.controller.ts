@@ -64,6 +64,26 @@ export const addCoin = async (req: any, res: any) => {
   }
 };
 
+export const addCoins = async (req: any, res: any) => {
+  const coins: Coin[] = req.body;
+  const collectionName = req.query.collectionName;
+  if (!coins || !Array.isArray(coins) || !collectionName) {
+    return res
+      .status(400)
+      .send(
+        "Bad Request: Invalid update parameters (either 'coins' or 'collectionName')"
+      );
+  }
+
+  try {
+    const insertResult = await CoinOperator.addCoins(collectionName, coins);
+    res.status(200).send(insertResult);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error saving the coin to the database");
+  }
+};
+
 export const updateCoin = async (req: any, res: any) => {
   const coin: Coin = req.body;
   const collectionName = req.query.collectionName;
