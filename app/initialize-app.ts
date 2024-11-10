@@ -9,6 +9,7 @@ import alertsRoutes from "../routes/alerts/alerts-operator.routes.ts";
 import alertsTvRoutes from "../routes/alerts/alerts-tv-operator.routes.ts";
 import coinsOperatorRoutes from "../routes/coins/coins-operator.routes.ts";
 import coinsProviderRoutes from "../routes/coins/coins-provider.routes.ts";
+import santimentProviderRoutes from "../routes/santiment/santiment-provider.routes.ts";
 
 const { ORIGIN_I, ORIGIN_II } = await load();
 const allowedOrigins = [ORIGIN_I, ORIGIN_II];
@@ -30,6 +31,7 @@ const initializeApp = (): Promise<Application> => {
   app.use("/api", coinsProviderRoutes);
   app.use("/api", coinsOperatorRoutes);
   app.use("/api", alertsTvRoutes);
+  app.use("/api", santimentProviderRoutes);
 
   return app;
 };

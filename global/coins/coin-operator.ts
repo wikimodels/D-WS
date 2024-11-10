@@ -15,10 +15,10 @@ import type {
 } from "../../models/mongodb/operations.ts";
 import type { Coin } from "../../models/coin/coin.ts";
 import { DColors } from "../../models/shared/colors.ts";
-import { designateCategories } from "./shared/designate-categories.ts";
-import { designateLinks } from "./shared/designate-links.ts";
+import { designateCategories } from "../utils/designate-categories.ts";
+import { designateLinks } from "../utils/designate-links.ts";
 import { ObjectId } from "https://deno.land/x/web_bson@v0.2.5/mod.ts";
-import { filterUpdateData } from "./shared/filter-update-data.ts";
+import { filterUpdateData } from "../utils/filter-update-data.ts";
 
 const { MONGO_DB, PROJECT_NAME } = await load();
 

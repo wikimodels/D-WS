@@ -1,46 +1,37 @@
 import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
+import { getSantimentQuery } from "./global/utils/santiment/santiment-query.ts";
+import {
+  currentMonth,
+  monthsAgo,
+} from "./global/utils/santiment/santiment-dates.ts";
+import { notifyAboutFailedFunction } from "./functions/tg/notifications/failed-function.ts";
 
 // Define API Key and Base URL
 const { SANTIMENT_API_KEY, SANTIMENT_API_URL } = await load();
 
 // Define the metrics you want to fetch
-const metric = "ecosystem_dev_activity";
 
 const url = `${SANTIMENT_API_URL}`;
 
-// Get the current date
-const now = new Date();
-// Get the date six months ago
-const sixMonthsAgo = new Date();
-sixMonthsAgo.setMonth(now.getMonth() - 6);
+const timeNow = currentMonth();
+const timeAgo = monthsAgo(6);
 
-// Format dates to ISO string
-const from = sixMonthsAgo.toISOString();
-const to = now.toISOString();
 const slug = "solana";
 // Define headers with the API key
 const headers = {
   Authorization: `Basic ${SANTIMENT_API_KEY}`,
   "Content-Type": "application/json",
 };
-
-const query = `
-    query {
-  getMetric(metric: "${metric}"){
-    timeseriesData(
-      selector: {slug: "${slug}"}
-      from: "${from}"
-      to: "${to}"      
-      interval: "7d"){
-        datetime
-        value
-    }
-  }
-}`;
-
+const metric: string = "sentiment_positive_total";
 // Fetch data from the Sentiment API
-async function fetchSentimentData() {
+async function fetchSentimentData(
+  slug: string,
+  metric: string,
+  fromTime: string,
+  toTime: string
+) {
   try {
+    const query = getSantimentQuery(slug, metric, fromTime, toTime);
     const response = await fetch(url, {
       method: "POST",
       headers: headers,
@@ -55,11 +46,29 @@ async function fetchSentimentData() {
     }
 
     const data = await response.json();
-    console.log("Data received successfully:", data);
+    if (data.errors) {
+      await notifyAboutFailedFunction(
+        "FUCK",
+        "SANTIMENT_PROVIDER",
+        "fetchSentimentData",
+        JSON.stringify(data.errors[0])
+      );
+      console.error(`Error: ${response.status} - ${response.statusText}`);
+      return;
+    }
+    const timeseriesData = data?.data?.getMetric?.timeseriesData;
+    if (timeseriesData) {
+      console.log("Timeseries Data:", timeseriesData);
+      return timeseriesData; // Return or further process this data as needed
+    } else {
+      console.error("Timeseries data not found in the response.");
+      return [];
+    }
   } catch (error) {
     console.error("Request failed:", error);
   }
 }
 
 // Run the function to fetch data
-fetchSentimentData();
+const data = await fetchSentimentData(slug, metric, timeNow, timeAgo);
+//console.log(data);
