@@ -9,9 +9,13 @@ const initializeWsConnManagers = async (timeframe: TF) => {
   try {
     const coins = await CoinOperator.getAllCoins(CoinsCollections.CoinRepo);
     const binanceCoins: Coin[] = coins.filter((c) => c.coinExchange == "bi");
-    const bybitCoins: Coin[] = []; //coins.filter((c)=>c.coinExchange == "by" || c.coinExchange == "biby")
+    const bybitCoins: Coin[] = coins
+      .filter((c) => c.coinExchange == "by" || c.coinExchange == "biby")
+      .slice(0, 10);
     BinanceWSConnManager.initializeInstance(binanceCoins, timeframe);
+    BinanceWSConnManager.checkConnectionsHealth(60);
     BybitWSConnManager.initializeInstance(bybitCoins, timeframe);
+    BybitWSConnManager.checkConnectionsHealth(60);
   } catch (error) {
     console.error("Failed to initialize Ws Conn Managers:", error);
     throw error;

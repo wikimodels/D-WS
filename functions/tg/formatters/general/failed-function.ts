@@ -1,3 +1,4 @@
+// deno-lint-ignore-file
 import { UnixToNamedTimeRu } from "../../../utils/time-converter.ts";
 
 export function formateFailedFunctionNotificationMsg(

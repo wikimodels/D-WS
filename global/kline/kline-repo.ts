@@ -2,13 +2,13 @@ import { _ } from "https://cdn.skypack.dev/lodash";
 import type { KlineObj } from "../../models/shared/kline.ts";
 const MAX_CANDLES = 1;
 
-const candleData = new Map<string, KlineObj[]>();
+const klineRepo = new Map<string, KlineObj[]>();
 
 export function saveCandle(obj: KlineObj) {
-  if (!candleData.has(obj.symbol)) {
-    candleData.set(obj.symbol, []);
+  if (!klineRepo.has(obj.symbol)) {
+    klineRepo.set(obj.symbol, []);
   }
-  const candles = candleData.get(obj.symbol)!;
+  const candles = klineRepo.get(obj.symbol)!;
 
   candles.push(obj);
 
@@ -18,7 +18,11 @@ export function saveCandle(obj: KlineObj) {
   }
 }
 
-export function getLatestKline(symbol: string): KlineObj | null {
-  const candles = candleData.get(symbol);
+export function getLatestDataFromKlineRepo(symbol: string): KlineObj | null {
+  const candles = klineRepo.get(symbol);
   return candles ? candles[candles.length - 1] : null;
+}
+
+export function clearKlineRepo() {
+  klineRepo.clear();
 }

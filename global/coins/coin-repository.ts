@@ -1,7 +1,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { load } from "https://deno.land/std@0.223.0/dotenv/mod.ts";
 import type { Coin } from "../../models/coin/coin.ts";
-import { sendTgGeneralMessage } from "../../functions/tg/send-general-tg-msg.ts";
+
 import { formatFailedDataNotificationMsg } from "../../functions/tg/formatters/coin-msg/failed-data-notification.ts";
 
 import { DColors } from "../../models/shared/colors.ts";
@@ -10,6 +10,7 @@ import { notifyAboutTurnover24hUpdateCompletion } from "../../functions/tg/notif
 import { CoinOperator } from "./coin-operator.ts";
 import { CoinsCollections } from "../../models/coin/coins-collections.ts";
 import type { ModifyResult } from "../../models/mongodb/operations.ts";
+import { sendTgBusinessMessage } from "../../functions/tg/tg-clients.ts";
 
 const {
   PROJECT_NAME,
@@ -58,7 +59,7 @@ export class CoinRepository {
       CoinRepository.instance = new CoinRepository();
       // Additional async setup or initialization if needed
     }
-    console.log("%cCoinOperator ---> initialized...", DColors.cyan);
+    console.log("%CoinRepository ---> initialized...", DColors.cyan);
     return CoinRepository.instance;
   }
 
@@ -74,7 +75,7 @@ export class CoinRepository {
       fnName,
       symbols
     );
-    await sendTgGeneralMessage(errorMsg);
+    await sendTgBusinessMessage(errorMsg);
   }
 
   private async fetchBybitKlineData(

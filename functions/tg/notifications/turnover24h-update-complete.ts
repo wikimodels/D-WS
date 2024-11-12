@@ -1,6 +1,6 @@
 import type { ModifyResult } from "../../../models/mongodb/operations.ts";
 import { formateTurnover24hUpdateNotificationMsg } from "../formatters/coin-msg/turnover24h-update.ts";
-import { sendTgGeneralMessage } from "../send-general-tg-msg.ts";
+import { sendTgTechMessage } from "../tg-clients.ts";
 
 export async function notifyAboutTurnover24hUpdateCompletion(
   projectName: string,
@@ -12,5 +12,5 @@ export async function notifyAboutTurnover24hUpdateCompletion(
     bybitModifyResult,
     binanceModifyResult
   );
-  await sendTgGeneralMessage(msg);
+  await sendTgTechMessage(msg);
 }

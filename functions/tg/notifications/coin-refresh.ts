@@ -3,7 +3,7 @@ import type {
   InsertResult,
 } from "../../../models/mongodb/operations.ts";
 import { formatCoinRefreshNotificationMsg } from "../formatters/coin-msg/coin-refresh-notification.ts";
-import { sendTgGeneralMessage } from "../send-general-tg-msg.ts";
+import { sendTgTechMessage } from "../tg-clients.ts";
 
 export async function notifyAboutCoinsRefresh(
   projectName: string,
@@ -11,5 +11,5 @@ export async function notifyAboutCoinsRefresh(
   result: { insertResult: InsertResult; deleteResult: DeleteResult }
 ) {
   const msg = formatCoinRefreshNotificationMsg(projectName, className, result);
-  await sendTgGeneralMessage(msg);
+  await sendTgTechMessage(msg);
 }

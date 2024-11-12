@@ -7,11 +7,11 @@ import { notifyAboutFailedFunction } from "../../functions/tg/notifications/fail
 import { getSantimentQuery } from "../utils/santiment/santiment-query.ts";
 
 import { formatFailedDataNotificationMsg } from "../../functions/tg/formatters/coin-msg/failed-data-notification.ts";
-import { sendTgGeneralMessage } from "../../functions/tg/send-general-tg-msg.ts";
 import { santimentMetrics } from "../utils/santiment/santiment-metrics.ts";
 import type { SantimentItem } from "../../models/santiment/santiment-item.ts";
 import { getSantimentEChartOptions } from "../utils/santiment/santiment-echart-options.ts";
 import { testSantimentItems } from "../utils/santiment/santiment-test-data.ts";
+import { sendTgBusinessMessage } from "../../functions/tg/tg-clients.ts";
 
 const { PROJECT_NAME, SANTIMENT_API_URL, SANTIMENT_API_KEY } = await load();
 
@@ -239,6 +239,6 @@ export class SantimentProvider {
       fnName,
       symbols
     );
-    await sendTgGeneralMessage(errorMsg);
+    await sendTgBusinessMessage(errorMsg);
   }
 }

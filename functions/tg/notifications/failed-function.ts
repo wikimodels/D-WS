@@ -1,6 +1,6 @@
 // deno-lint-ignore-file
 import { formateFailedFunctionNotificationMsg } from "../formatters/general/failed-function.ts";
-import { sendTgGeneralMessage } from "../send-general-tg-msg.ts";
+import { sendTgTechMessage } from "../tg-clients.ts";
 
 export async function notifyAboutFailedFunction(
   projectName: string,
@@ -14,5 +14,5 @@ export async function notifyAboutFailedFunction(
     fnName,
     error
   );
-  await sendTgGeneralMessage(msg);
+  await sendTgTechMessage(msg);
 }

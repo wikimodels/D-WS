@@ -37,7 +37,10 @@ export class CoinOperator {
       await this.dbClient.connect(this.MONGO_DB);
       this.db = this.dbClient.database(this.dbName);
       CoinOperator.instance = new CoinOperator();
-      console.log("%cCoinOperator ---> initialized...", DColors.yellow);
+      console.log(
+        `%c${this.PROJECT_NAME}:${this.CLASS_NAME} ---> initialized...`,
+        DColors.magenta
+      );
     }
     return CoinOperator.instance;
   }

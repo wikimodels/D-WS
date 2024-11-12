@@ -34,10 +34,12 @@ export function formatCoinRefreshNotificationMsg(
   const timestamp = UnixToNamedTimeRu(new Date().getTime());
 
   const msg = `
-<b>🔄 ${projectName}:${className} Coin Refresh Done</b>
-<b>Deleted</b> ${result.deleteResult.deletedCount}
-<b>Inserted</b> ${result.insertResult.insertedCount}
-━━━━━━━━━━━━━ 
-🕒 <b>Time:</b> <i>${timestamp}</i>`;
+  <b>🔄 ${projectName}:${className} Turnover24h Update Done</b>
+  
+  <b>Deleted:</b>  ${result.deleteResult.deletedCount}
+  <b>Inserted:</b>  ${result.insertResult.insertedCount}
+  ━━━━━━━━━━━━━    
+  🕒 <b>Time:</b> <i>${timestamp}</i>
+  `;
   return msg;
 }

@@ -76,6 +76,41 @@ export class AlertOperator {
     }
   }
 
+  public static async addMany(
+    collectionName: string,
+    alerts: Alert[]
+  ): Promise<InsertResult> {
+    let kv;
+    let insertedCount = 0;
+    try {
+      kv = await Deno.openKv();
+
+      // Start a batch operation
+      for (const alert of alerts) {
+        alert.id = crypto.randomUUID();
+        await kv.set([collectionName, alert.id], alert);
+        insertedCount++;
+      }
+
+      return { inserted: true, insertedCount } as InsertResult;
+    } catch (error) {
+      console.error("Error adding multiple alerts:", error);
+      const errorMsg = `${this.PROJECT_NAME}:${this.CLASS_NAME}:addMany() ---> Failed to add multiple documents`;
+      console.error(errorMsg, error);
+      await notifyAboutFailedFunction(
+        this.PROJECT_NAME,
+        this.CLASS_NAME,
+        "addMany",
+        error
+      );
+      throw error; // Re-throw to propagate the error
+    } finally {
+      if (kv) {
+        await kv.close();
+      }
+    }
+  }
+
   public static async updateAlert(
     collectionName: string,
     alert: Alert

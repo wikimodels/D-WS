@@ -1,9 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
-import {
-  UnixToNamedTimeRu,
-  UnixToTime,
-} from "../../functions/utils/time-converter.ts";
-import { AlertTvOperator } from "../../global/alert/alert-tv-operator.ts";
+import { UnixToTime } from "../../functions/utils/time-converter.ts";
+import { saveAlertTv } from "../../global/alert/alert-tv-repo.ts";
 import type { Alert } from "../../models/alerts/alert.ts";
 
 export const addAlertTv = (req: any, res: any) => {
@@ -16,13 +13,13 @@ export const addAlertTv = (req: any, res: any) => {
   alert.activationTimeStr = UnixToTime(activationTime);
   alert.tvImgUrls = [];
   alert.tvImgUrls.push(alert.imgUrl);
-
+  alert.isTv = true;
   if (!alert) {
     return res.status(400).send("Bad Request: Invalid POST 'alert' parameters");
   }
 
   try {
-    AlertTvOperator.addAlert(alert.symbol, alert);
+    saveAlertTvToMemory(alert);
     res.status(200).send("OK");
   } catch (error) {
     console.error(error);

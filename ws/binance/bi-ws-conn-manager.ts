@@ -6,7 +6,7 @@ import { printConnectionErrorInfo } from "../../functions/utils/messages/print-c
 import { printMaxRetriesReachedInfo } from "../../functions/utils/messages/print-max-retries-reached-info.ts";
 import { printRetryingConnectionInfo } from "../../functions/utils/messages/print-retrying-conn-info.ts";
 import { UnixToTime } from "../../functions/utils/time-converter.ts";
-import { Colors } from "../../models/shared/colors.ts";
+import { Colors, DColors } from "../../models/shared/colors.ts";
 import type { ConnObj } from "../../models/shared/conn-obj.ts";
 import type { ConnectionStatus } from "../../models/shared/conn-status.ts";
 import type { Exchange } from "../../models/shared/exchange.ts";
@@ -16,6 +16,7 @@ import { printOpenConnectionInfo } from "../../functions/utils/messages/print-op
 import { failedConnectionManager } from "../../global/error-handling/failed-connections.ts";
 import { saveCandle } from "../../global/kline/kline-repo.ts";
 import type { Coin } from "../../models/coin/coin.ts";
+import { notifyAboutUnhealthyWsConnStatus } from "../../functions/tg/notifications/ws-unhealthy-status.ts";
 
 const env = await load();
 
@@ -30,6 +31,7 @@ export class BinanceWSConnManager {
   private static connectionType = "";
   private static timeframe: TF;
   private static projectName = env["PROJECT_NAME"];
+  private static className = "BinanceWSConnManager";
   private static shouldReconnect = true;
   private static isStarted = false;
   private static isInitialized = false;
@@ -44,8 +46,11 @@ export class BinanceWSConnManager {
     this.connectionType = "KLINE-" + timeframe;
     this.timeframe = timeframe;
     this.allSymbols = new Set(coins.map((coin) => coin.symbol));
-
-    this.isInitialized = true; // Mark as initialized
+    this.isInitialized = true;
+    console.log(
+      `%c${this.projectName}:${this.className} instance ---> initialized...`,
+      DColors.cyan
+    );
   }
 
   static startConnections() {
@@ -143,20 +148,29 @@ export class BinanceWSConnManager {
     }));
   }
 
-  static getConnectionStatus() {
+  static getConnectionStatus(): ConnectionStatus | { status: string } {
     if (!this.isInitialized) {
       return { status: "BinanceWSConnManager has not been initialized." };
     }
 
+    const inactiveConns = Array.from(this.allSymbols)
+      .filter((symbol) => !this.connections.has(symbol))
+      .sort((a, b) => a.localeCompare(b));
+
+    const activeConns = Array.from(this.allSymbols)
+      .filter((symbol) => this.connections.has(symbol))
+      .sort((a, b) => a.localeCompare(b));
+
     const status: ConnectionStatus = {
       coinsLen: this.allSymbols.size,
       activeConnLen: this.connections.size,
-      inactiveConn: Array.from(this.allSymbols).filter(
-        (symbol) => !this.connections.has(symbol)
-      ),
+      inactiveConnLen: inactiveConns.length,
+      inactiveConn: inactiveConns,
+      activeConn: activeConns,
       timestamp: new Date().getTime(),
       timestampStr: UnixToTime(new Date().getTime()),
     };
+
     return status;
   }
 
@@ -207,5 +221,23 @@ export class BinanceWSConnManager {
 
   static checkInitialization() {
     return this.isInitialized;
+  }
+
+  public static checkConnectionsHealth(minutes: number) {
+    setInterval(async () => {
+      const status = this.getConnectionStatus() as ConnectionStatus;
+      if (status.coinsLen !== status.activeConnLen && this.isStarted) {
+        await notifyAboutUnhealthyWsConnStatus(
+          this.projectName,
+          this.className,
+          status
+        );
+      } else {
+        console.log(
+          `%c${this.projectName}:${this.className} WS Conns Health Status ---> ok`,
+          DColors.cyan
+        );
+      }
+    }, minutes * 60 * 1000);
   }
 }

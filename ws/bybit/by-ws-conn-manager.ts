@@ -8,7 +8,7 @@ import { printOpenConnectionInfo } from "../../functions/utils/messages/print-op
 import { printRetryingConnectionInfo } from "../../functions/utils/messages/print-retrying-conn-info.ts";
 import { UnixToTime } from "../../functions/utils/time-converter.ts";
 
-import { Colors } from "../../models/shared/colors.ts";
+import { Colors, DColors } from "../../models/shared/colors.ts";
 import type { ConnObj } from "../../models/shared/conn-obj.ts";
 import type { ConnectionStatus } from "../../models/shared/conn-status.ts";
 import type { Exchange } from "../../models/shared/exchange.ts";
@@ -17,6 +17,7 @@ import { mapByDataToKlineObj } from "./map-by-data-to-kline-obj.ts";
 import { failedConnectionManager } from "../../global/error-handling/failed-connections.ts";
 import { saveCandle } from "../../global/kline/kline-repo.ts";
 import type { Coin } from "../../models/coin/coin.ts";
+import { notifyAboutUnhealthyWsConnStatus } from "../../functions/tg/notifications/ws-unhealthy-status.ts";
 
 const env = await load();
 
@@ -31,6 +32,7 @@ export class BybitWSConnManager {
   private static connectionType = "";
   private static timeframe: TF;
   private static projectName = env["PROJECT_NAME"];
+  private static className = "BybitWSConnManager";
   private static shouldReconnect = true;
   private static isStarted = false;
   private static isInitialized = false;
@@ -46,6 +48,10 @@ export class BybitWSConnManager {
     this.timeframe = timeframe;
     this.allSymbols = new Set(coins.map((coin) => coin.symbol));
     this.isInitialized = true;
+    console.log(
+      `%c${this.projectName}:${this.className} instance ---> initialized...`,
+      DColors.green
+    );
   }
 
   static startConnections() {
@@ -158,20 +164,29 @@ export class BybitWSConnManager {
     }));
   }
 
-  static getConnectionStatus() {
+  static getConnectionStatus(): ConnectionStatus | { status: string } {
     if (!this.isInitialized) {
       return { status: "BybitWSConnManager has not been initialized." };
     }
 
+    const inactiveConns = Array.from(this.allSymbols)
+      .filter((symbol) => !this.connections.has(symbol))
+      .sort((a, b) => a.localeCompare(b));
+
+    const activeConns = Array.from(this.allSymbols)
+      .filter((symbol) => this.connections.has(symbol))
+      .sort((a, b) => a.localeCompare(b));
+
     const status: ConnectionStatus = {
       coinsLen: this.allSymbols.size,
       activeConnLen: this.connections.size,
-      inactiveConn: Array.from(this.allSymbols).filter(
-        (symbol) => !this.connections.has(symbol)
-      ),
+      inactiveConnLen: inactiveConns.length,
+      inactiveConn: inactiveConns,
+      activeConn: activeConns,
       timestamp: new Date().getTime(),
       timestampStr: UnixToTime(new Date().getTime()),
     };
+
     return status;
   }
 
@@ -222,5 +237,23 @@ export class BybitWSConnManager {
 
   static checkInitialization() {
     return this.isInitialized;
+  }
+
+  public static checkConnectionsHealth(minutes: number) {
+    setInterval(async () => {
+      const status = this.getConnectionStatus() as ConnectionStatus;
+      if (status.coinsLen !== status.activeConnLen && this.isStarted) {
+        await notifyAboutUnhealthyWsConnStatus(
+          this.projectName,
+          this.className,
+          status
+        );
+      } else {
+        console.log(
+          `%c${this.projectName}:${this.className} WS Conns Health Status ---> ok`,
+          DColors.yellow
+        );
+      }
+    }, minutes * 60 * 1000);
   }
 }
