@@ -37,7 +37,8 @@ export class CoinProvider {
   private readonly LOWEST_TURNOVER24H = parseFloat(LOWEST_TURNOVER24H);
   private readonly SANTIMENT_API_URL = SANTIMENT_API_URL;
   private readonly SANTIMENT_API_KEY = SANTIMENT_API_KEY;
-
+  public apiLimit1m = 0;
+  public apiLimit = 0;
   private constructor() {}
 
   public static initializeInstance(): CoinProvider {
@@ -102,7 +103,21 @@ export class CoinProvider {
         return [];
       }
       const data = await response.json();
-
+      // Access response headers
+      const usedWeight = response.headers.get("X-MBX-USED-WEIGHT");
+      const usedWeight1m = response.headers.get("X-MBX-USED-WEIGHT-1M");
+      console.log(
+        "====>>>>> usedWeight",
+        usedWeight,
+        "usedWeight1m",
+        usedWeight1m
+      );
+      if (usedWeight1m) {
+        this.apiLimit1m += parseInt(usedWeight1m);
+      }
+      if (usedWeight) {
+        this.apiLimit += parseInt(usedWeight);
+      }
       if (Array.isArray(data)) {
         console.log(
           `%c${this.PROJECT}:${this.CLASS_NAME} ---> Binance Data received...`,
@@ -436,11 +451,14 @@ export class CoinProvider {
       coins = this.mergeData(binanceData, bybitData);
       coins = await this.sortOutUniqueCoins(coins);
       coins = await this.assignCoinGeckoIds(coins);
-      coins = await this.assignSantimentIds(coins);
+      //coins = await this.assignSantimentIds(coins);
       coins = await this.enrichWithCoinGeckoData(coins);
       coins = CoinOperator.assignCategories(coins, this.LOWEST_TURNOVER24H);
       coins = CoinOperator.assingLinks(coins);
       const result = await this.saveUniqueCoinsToDb(coins);
+      //TODO
+      console.log("API LIMIT ===> ", this.apiLimit);
+      console.log("API LIMIT 1M ===> ", this.apiLimit1m);
       await notifyAboutCoinsRefresh(this.PROJECT, this.CLASS_NAME, result);
       return result;
     } catch (error: any) {

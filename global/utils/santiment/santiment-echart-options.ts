@@ -1,10 +1,11 @@
+// deno-lint-ignore-file no-explicit-any
 import type { SantimentItem } from "../../../models/santiment/santiment-item.ts";
 
 export function getSantimentEChartOptions(item: SantimentItem) {
   const options = {
     tooltip: {
       trigger: "axis",
-      position: function (pt) {
+      position: function (pt: any) {
         return [pt[0], "10%"];
       },
     },

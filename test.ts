@@ -1,19 +1,28 @@
-import { SantimentProvider } from "./global/santiment/santiment-provider.ts";
-import {
-  currentMonth,
-  monthsAgo,
-} from "./global/utils/santiment/santiment-dates.ts";
+async function fetchKlineData() {
+  try {
+    const response = await fetch(
+      "https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=15m"
+    );
 
-const fromData = monthsAgo(6);
-const toDate = currentMonth();
-console.log(fromData);
-console.log(toDate);
-// const santimentProvider = SantimentProvider.initializeInstance();
-// const res = await SantimentProvider.getSantimentEChartsData(
-//   "solana",
-//   "SOLUSDT",
-//   fromData,
-//   toDate
-// );
-//
-//console.log(res);
+    if (!response.ok) {
+      throw new Error(`Error fetching data: ${response.statusText}`);
+    }
+
+    // Access response headers
+    const usedWeight = response.headers.get("X-MBX-USED-WEIGHT");
+    const usedWeight1m = response.headers.get("X-MBX-USED-WEIGHT-1M");
+
+    console.log(`Used Weight (current): ${usedWeight}`);
+    console.log(`Used Weight (1 minute): ${usedWeight1m}`);
+
+    // Parse JSON data
+    const data = await response.json();
+    //console.log(data);
+
+    // Process data as needed
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+fetchKlineData();

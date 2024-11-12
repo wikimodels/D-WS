@@ -7,7 +7,7 @@ import { printMaxRetriesReachedInfo } from "../../functions/utils/messages/print
 import { printOpenConnectionInfo } from "../../functions/utils/messages/print-open-conn-info.ts";
 import { printRetryingConnectionInfo } from "../../functions/utils/messages/print-retrying-conn-info.ts";
 import { UnixToTime } from "../../functions/utils/time-converter.ts";
-import type { Coin } from "../../models/shared/coin.ts";
+
 import { Colors } from "../../models/shared/colors.ts";
 import type { ConnObj } from "../../models/shared/conn-obj.ts";
 import type { ConnectionStatus } from "../../models/shared/conn-status.ts";
@@ -16,32 +16,32 @@ import type { TF } from "../../models/shared/timeframes.ts";
 import { mapByDataToKlineObj } from "./map-by-data-to-kline-obj.ts";
 import { failedConnectionManager } from "../../global/error-handling/failed-connections.ts";
 import { saveCandle } from "../../global/kline/kline-repo.ts";
+import type { Coin } from "../../models/coin/coin.ts";
 
 const env = await load();
 
 export class BybitWSConnManager {
-  private connections: Map<string, StandardWebSocketClient> = new Map();
-  private retryCounts: Map<string, number> = new Map();
-  private maxRetries = 10;
-  private allSymbols: Set<string>;
-  private exchange: string;
-  private baseUrl = env["BYBIT_FS_WS"];
-  private connObjs: ConnObj[];
-  private connectionType = "";
-  private timeframe: TF;
-  private projectName = env["PROJECT_NAME"];
-  private shouldReconnect = true;
-  private isStarted = false;
+  private static connections: Map<string, StandardWebSocketClient> = new Map();
+  private static retryCounts: Map<string, number> = new Map();
+  private static maxRetries = 10;
+  private static allSymbols: Set<string>;
+  private static exchange = "BYBIT";
+  private static baseUrl = env["BYBIT_FS_WS"];
+  private static connObjs: ConnObj[];
+  private static connectionType = "";
+  private static timeframe: TF;
+  private static projectName = env["PROJECT_NAME"];
+  private static shouldReconnect = true;
+  private static isStarted = false;
 
-  constructor(coins: Coin[], timeframe: TF) {
+  static initialize(coins: Coin[], timeframe: TF) {
     this.connObjs = this.getConnObjs(coins, timeframe);
     this.connectionType = "KLINE-" + timeframe;
-    this.exchange = "BYBIT";
     this.timeframe = timeframe;
     this.allSymbols = new Set(coins.map((coin) => coin.symbol));
   }
 
-  initializeConnections() {
+  static initializeConnections() {
     if (!this.shouldReconnect) {
       console.log("Reconnection disabled. Skipping connection initialization.");
       return;
@@ -52,19 +52,18 @@ export class BybitWSConnManager {
     this.isStarted = true;
   }
 
-  // Method to start connections manually
-  startConnections() {
+  static startConnections() {
     if (this.isStarted) {
       return { status: "Bybit WS Connections already running" };
     }
     this.isStarted = true;
-    this.shouldReconnect = true; // Enable reconnection attempts
+    this.shouldReconnect = true;
     console.log("Starting connections manually...");
-    this.initializeConnections(); // Initialize all connections
+    this.initializeConnections();
     return { status: "Bybit WS Connections started" };
   }
 
-  private createWsConnection(connObj: ConnObj) {
+  private static createWsConnection(connObj: ConnObj) {
     const ws = new StandardWebSocketClient(this.baseUrl);
     ws.on("open", () => {
       ws.send(
@@ -113,7 +112,6 @@ export class BybitWSConnManager {
       );
       this.connections.delete(connObj.symbol);
 
-      // Attempt to reconnect only if shouldReconnect is true
       if (this.shouldReconnect) {
         await this.reconnectToWs(connObj);
       }
@@ -137,7 +135,7 @@ export class BybitWSConnManager {
     });
   }
 
-  private getConnObjs(coins: Coin[], timeframe: TF): ConnObj[] {
+  private static getConnObjs(coins: Coin[], timeframe: TF): ConnObj[] {
     return coins.map((c) => ({
       exchange: this.exchange,
       projectName: this.projectName,
@@ -147,7 +145,7 @@ export class BybitWSConnManager {
     }));
   }
 
-  getConnectionStatus() {
+  static getConnectionStatus() {
     const status: ConnectionStatus = {
       coinsLen: this.allSymbols.size,
       activeConnLen: this.connections.size,
@@ -160,7 +158,7 @@ export class BybitWSConnManager {
     return status;
   }
 
-  closeAllConnections() {
+  static closeAllConnections() {
     if (!this.isStarted) {
       return { status: "Bybit WS Connections already closed" };
     }
@@ -174,7 +172,7 @@ export class BybitWSConnManager {
     return { status: "Bybit WS Connections closed" };
   }
 
-  private reconnectToWs(connObj: ConnObj) {
+  private static reconnectToWs(connObj: ConnObj) {
     const retryCount = this.retryCounts.get(connObj.symbol) ?? 0;
 
     if (retryCount < this.maxRetries && this.shouldReconnect) {

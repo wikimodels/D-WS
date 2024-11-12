@@ -83,18 +83,7 @@ export const santimentMetrics = [
       shadowOffsetY: 10,
     },
   },
-  {
-    label: "Circulation Change (30 Days)",
-    metric: "circulation_change_30d",
-    lineStyle: { color: "#1E90FF", width: 1, type: "solid" },
-    areaStyle: {
-      color: "rgba(30, 144, 255, 0.4)",
-      opacity: 0.4,
-      shadowBlur: 15,
-      shadowOffsetX: 10,
-      shadowOffsetY: 10,
-    },
-  },
+
   {
     label: "Circulation (USD, 180 Days)",
     metric: "circulation_usd_180d",
@@ -107,18 +96,7 @@ export const santimentMetrics = [
       shadowOffsetY: 10,
     },
   },
-  {
-    label: "Developer Activity Change (30 Days)",
-    metric: "dev_activity_change_30d",
-    lineStyle: { color: "#6A5ACD", width: 1, type: "solid" },
-    areaStyle: {
-      color: "rgba(106, 90, 205, 0.4)",
-      opacity: 0.4,
-      shadowBlur: 15,
-      shadowOffsetX: 10,
-      shadowOffsetY: 10,
-    },
-  },
+
   {
     label: "Developer Activity Contributors Count",
     metric: "dev_activity_contributors_count",
@@ -131,18 +109,7 @@ export const santimentMetrics = [
       shadowOffsetY: 10,
     },
   },
-  {
-    label: "GitHub Activity Change (30 Days)",
-    metric: "github_activity_change_30d",
-    lineStyle: { color: "#9400D3", width: 1, type: "solid" },
-    areaStyle: {
-      color: "rgba(148, 0, 211, 0.4)",
-      opacity: 0.4,
-      shadowBlur: 15,
-      shadowOffsetX: 10,
-      shadowOffsetY: 10,
-    },
-  },
+
   {
     label: "GitHub Activity Contributors Count",
     metric: "github_activity_contributors_count",
@@ -167,18 +134,7 @@ export const santimentMetrics = [
       shadowOffsetY: 10,
     },
   },
-  {
-    label: "Sentiment Balance Total Change (30 Days)",
-    metric: "sentiment_balance_total_change_30d",
-    lineStyle: { color: "#2E8B57", width: 1, type: "solid" },
-    areaStyle: {
-      color: "rgba(46, 139, 87, 0.4)",
-      opacity: 0.4,
-      shadowBlur: 15,
-      shadowOffsetX: 10,
-      shadowOffsetY: 10,
-    },
-  },
+
   {
     label: "Daily Active Addresses",
     metric: "daily_active_addresses",

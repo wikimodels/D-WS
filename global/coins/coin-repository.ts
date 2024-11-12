@@ -96,6 +96,20 @@ export class CoinRepository {
 
       const data = await response.json();
 
+      // Access Bybit rate limit headers
+      //TODO
+      const rateLimit = response.headers.get("X-Bapi-Limit-Status");
+      const rateLimitRemaining = response.headers.get("X-Bapi-Limit");
+      const rateLimitReset = response.headers.get(
+        "X-Bapi-Limit-Reset-Timestamp"
+      );
+      //TODO
+      console.log(`your remaining requests for current endpoint: ${rateLimit}`);
+      console.log(
+        `your current limit for current endpoint: ${rateLimitRemaining}`
+      );
+      console.log(`X-Bapi-Limit-Reset-Timestamp: ${rateLimitReset}`);
+
       // Check if Bybit's response contains the expected "OK" message
       if (data.retMsg !== "OK") {
         throw new Error(
@@ -155,7 +169,21 @@ export class CoinRepository {
       }
 
       const data = await response.json();
-
+      // Access response headers
+      const usedWeight = response.headers.get("X-MBX-USED-WEIGHT");
+      const usedWeight1m = response.headers.get("X-MBX-USED-WEIGHT-1M");
+      // console.log(
+      //   "====>>>>> usedWeight",
+      //   usedWeight,
+      //   "usedWeight1m",
+      //   usedWeight1m
+      // );
+      if (usedWeight1m) {
+        //this.apiLimit1m += parseInt(usedWeight1m);
+      }
+      if (usedWeight) {
+        //this.apiLimit += parseInt(usedWeight);
+      }
       // Validate data structure to ensure expected format
       if (
         !Array.isArray(data) ||
@@ -380,7 +408,11 @@ export class CoinRepository {
     try {
       const coins = await CoinOperator.getAllCoins(CoinsCollections.CoinRepo);
 
-      const binanceCoins = coins.filter((c) => c.coinExchange == "bi");
+      const binanceCoins = coins.filter(
+        (c) => c.coinExchange == "bi" || c.coinExchange == "biby"
+      );
+      //TODO
+      console.log("BINANCE COINS ---> ", binanceCoins.length);
       const bybitCoins = coins.filter(
         (c) => c.coinExchange == "bу" || c.coinExchange == "biby"
       );
@@ -388,13 +420,15 @@ export class CoinRepository {
       const binanceModifyResult = await this.runBinanceTurnover24hUpdate(
         binanceCoins,
         "1d",
-        1
+        400
       );
       const bybitModifyResult = await this.runBybitTurnover24hUpdate(
         bybitCoins,
         "D",
-        1
+        400
       );
+      //TODO:
+      console.log("BYBIT Coins ---> ", bybitCoins.length);
       console.log(
         "%cTurnover24h Update Procedure ---> successfully done...",
         DColors.magenta

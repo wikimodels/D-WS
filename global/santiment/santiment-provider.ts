@@ -11,6 +11,7 @@ import { sendTgGeneralMessage } from "../../functions/tg/send-general-tg-msg.ts"
 import { santimentMetrics } from "../utils/santiment/santiment-metrics.ts";
 import type { SantimentItem } from "../../models/santiment/santiment-item.ts";
 import { getSantimentEChartOptions } from "../utils/santiment/santiment-echart-options.ts";
+import { testSantimentItems } from "../utils/santiment/santiment-test-data.ts";
 
 const { PROJECT_NAME, SANTIMENT_API_URL, SANTIMENT_API_KEY } = await load();
 
@@ -31,17 +32,16 @@ type FailureResult = {
   metric: string;
   slug: string;
   error: any;
-  label?: string; // Make label optional here to align with Result type
 };
 
 type Result = {
   metric: string;
-  label?: string;
   slug: string;
-  areaStyle?: any[];
-  lineStyle?: any[];
+  areaStyle?: any;
+  label?: string;
+  lineStyle?: any;
   symbol: string;
-  success?: boolean;
+  success: boolean;
   data?: { datetime: string; value: number }[];
   error?: string;
 };
@@ -198,7 +198,7 @@ export class SantimentProvider {
     symbol: string,
     fromDate: string,
     toDate: string
-  ) {
+  ): Promise<SantimentItem[]> {
     const promises = this.createSantimentPromises(
       slug,
       symbol,
@@ -206,23 +206,25 @@ export class SantimentProvider {
       toDate
     );
 
-    const result = await this.runSantimentPromises(promises);
+    //const result = await this.runSantimentPromises(promises);
 
-    const echartOptions = this.createEChartOptions(result.successfulData);
-    if (result.failedData.length > 0) {
-      const symbols = result.failedData.map((d) => d.symbol);
-      this.sendFailedDataNotification(
-        this.PROJECT,
-        this.CLASS_NAME,
-        "runSantimentDataFecth",
-        symbols
-      );
-    }
+    // const echartOptions = this.createEChartOptions(result.successfulData);
+    //if (result.failedData.length > 0) {
+    //   const symbols = result.failedData.map((d) => d.symbol);
+    //   this.sendFailedDataNotification(
+    //     this.PROJECT,
+    //     this.CLASS_NAME,
+    //     "runSantimentDataFecth",
+    //     symbols
+    //   );
+    // }
 
-    console.log(
-      `%c${this.PROJECT}:${this.CLASS_NAME} ---> Santiment Successfull Data Fetch: ${result.successfulData.length}`,
-      DColors.cyan
-    );
+    // console.log(
+    //   `%c${this.PROJECT}:${this.CLASS_NAME} ---> Santiment Successfull Data Fetch: ${result.successfulData.length}`,
+    //   DColors.cyan
+    // );
+    //return echartOptions;
+    const echartOptions = this.createEChartOptions(testSantimentItems);
     return echartOptions;
   }
   private static async sendFailedDataNotification(
