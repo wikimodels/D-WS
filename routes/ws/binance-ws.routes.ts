@@ -7,7 +7,7 @@ import {
 
 const router = express.Router();
 router.get("/ws/binance/start", startBinanceWs);
-router.get("/ws/binance/close", closeBinanceWs);
+router.get("/ws/binance/pause", closeBinanceWs);
 router.get("/ws/binance/status", getBinanceWsStatus);
 
 export default router;

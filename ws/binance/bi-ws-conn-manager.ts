@@ -34,7 +34,7 @@ export class BinanceWSConnManager {
   private static isStarted = false;
   private static isInitialized = false;
 
-  static initialize(coins: Coin[], timeframe: TF) {
+  public static initializeInstance(coins: Coin[], timeframe: TF) {
     if (this.isInitialized) {
       console.log("BinanceWSConnManager is already initialized.");
       return;

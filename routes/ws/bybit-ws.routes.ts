@@ -7,7 +7,7 @@ import {
 
 const router = express.Router();
 router.get("/ws/bybit/start", startBybitWs);
-router.get("/ws/bybit/close", closeBybitWs);
+router.get("/ws/bybit/pause", closeBybitWs);
 router.get("/ws/bybit/status", getBybitWsStatus);
 
 export default router;
