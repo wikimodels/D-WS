@@ -27,18 +27,42 @@ export class BybitWSConnManager {
   private static allSymbols: Set<string>;
   private static exchange = "BYBIT";
   private static baseUrl = env["BYBIT_FS_WS"];
-  private static connObjs: ConnObj[];
+  private static connObjs: ConnObj[] = [];
   private static connectionType = "";
   private static timeframe: TF;
   private static projectName = env["PROJECT_NAME"];
   private static shouldReconnect = true;
   private static isStarted = false;
+  private static isInitialized = false;
 
   static initialize(coins: Coin[], timeframe: TF) {
+    if (this.isInitialized) {
+      console.log("BybitWSConnManager is already initialized.");
+      return;
+    }
+
     this.connObjs = this.getConnObjs(coins, timeframe);
     this.connectionType = "KLINE-" + timeframe;
     this.timeframe = timeframe;
     this.allSymbols = new Set(coins.map((coin) => coin.symbol));
+    this.isInitialized = true;
+  }
+
+  static startConnections() {
+    if (!this.isInitialized) {
+      console.log("BybitWSConnManager has not been initialized.");
+      return { status: "Initialization required before starting connections" };
+    }
+
+    if (this.isStarted) {
+      return { status: "Bybit WS Connections already running" };
+    }
+
+    this.isStarted = true;
+    this.shouldReconnect = true;
+    console.log("Starting Bybit WS connections...");
+    this.initializeConnections();
+    return { status: "Bybit WS Connections started" };
   }
 
   static initializeConnections() {
@@ -50,17 +74,6 @@ export class BybitWSConnManager {
       this.createWsConnection(connObj);
     }
     this.isStarted = true;
-  }
-
-  static startConnections() {
-    if (this.isStarted) {
-      return { status: "Bybit WS Connections already running" };
-    }
-    this.isStarted = true;
-    this.shouldReconnect = true;
-    console.log("Starting connections manually...");
-    this.initializeConnections();
-    return { status: "Bybit WS Connections started" };
   }
 
   private static createWsConnection(connObj: ConnObj) {
@@ -146,6 +159,10 @@ export class BybitWSConnManager {
   }
 
   static getConnectionStatus() {
+    if (!this.isInitialized) {
+      return { status: "BybitWSConnManager has not been initialized." };
+    }
+
     const status: ConnectionStatus = {
       coinsLen: this.allSymbols.size,
       activeConnLen: this.connections.size,
@@ -174,7 +191,6 @@ export class BybitWSConnManager {
 
   private static reconnectToWs(connObj: ConnObj) {
     const retryCount = this.retryCounts.get(connObj.symbol) ?? 0;
-
     if (retryCount < this.maxRetries && this.shouldReconnect) {
       printRetryingConnectionInfo(
         this.exchange,
@@ -202,5 +218,9 @@ export class BybitWSConnManager {
         retryCount
       );
     }
+  }
+
+  static checkInitialization() {
+    return this.isInitialized;
   }
 }

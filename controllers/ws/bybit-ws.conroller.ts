@@ -8,7 +8,6 @@ import { CoinOperator } from "../../global/coins/coin-operator.ts";
 import { CoinsCollections } from "../../models/coin/coins-collections.ts";
 
 const { BYBIT_WS_TF } = await load();
-let ws: BybitWSConnManager | null = null;
 
 export const runBybitWSConnections = async () => {
   // Define variables to hold instances
@@ -19,8 +18,8 @@ export const runBybitWSConnections = async () => {
   );
 
   // Initialize BinanceWSConnManager with coins and timeframe
-  ws = new BybitWSConnManager(bybitceCoins, BYBIT_WS_TF as TF);
-  ws.initializeConnections();
+  BybitWSConnManager.initialize(bybitceCoins, BYBIT_WS_TF as TF);
+  BybitWSConnManager.initializeConnections();
   console.log(
     "%cBybit WebSocket connections --> getting initialized...",
     DColors.magenta
@@ -28,11 +27,11 @@ export const runBybitWSConnections = async () => {
 };
 
 export const startBybitWs = (_req: any, res: any) => {
-  if (!ws) {
+  if (BybitWSConnManager.checkInitialization()) {
     return res.status(500).send("Bybit WebSocket Manager not initialized.");
   }
   try {
-    const result = ws.startConnections();
+    const result = BybitWSConnManager.startConnections();
     res.status(200).send(result);
   } catch (error) {
     console.error("Error starting Bybit WebSocket connections:", error);
@@ -43,11 +42,11 @@ export const startBybitWs = (_req: any, res: any) => {
 };
 
 export const closeBybitWs = (_req: any, res: any) => {
-  if (!ws) {
+  if (BybitWSConnManager.checkInitialization()) {
     return res.status(500).send("Bybit WebSocket Manager not initialized.");
   }
   try {
-    const result = ws.closeAllConnections();
+    const result = BybitWSConnManager.closeAllConnections();
     res.status(200).send(result);
   } catch (error) {
     console.error("Error closing Bybit WebSocket connections:", error);
@@ -58,11 +57,11 @@ export const closeBybitWs = (_req: any, res: any) => {
 };
 
 export const getBybitWsStatus = (_req: any, res: any) => {
-  if (!ws) {
+  if (BybitWSConnManager.checkInitialization()) {
     return res.status(500).send("Bybit WebSocket Manager not initialized.");
   }
   try {
-    const result = ws.getConnectionStatus();
+    const result = BybitWSConnManager.getConnectionStatus();
     res.status(200).send(result);
   } catch (error) {
     console.error("Error retrieving Bybit WebSocket connection status:", error);

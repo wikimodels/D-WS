@@ -6,6 +6,7 @@ import initializeCoinProvider from "./app/initialize-coin-provider.ts";
 import initializeCoinOperator from "./app/intialize-coin-operator.ts";
 import initializeAlertTvOperator from "./app/intialize-alert-tv-operator.ts";
 import initializeSantimentProvider from "./app/initialize-santiment-provider.ts";
+import runBinanceWSConnections from "./controllers/ws/binance-ws.conroller.ts";
 initializeCoinOperator()
   .then(() => initializeCoinRepository())
   .then(() => initializeCoinProvider())
@@ -13,7 +14,7 @@ initializeCoinOperator()
   .then(() => initializeSantimentProvider())
   .then(() => initializeApp())
   .then((app: Application) => {
-    //runBinanceWSConnections();
+    runBinanceWSConnections();
     //runBybitWSConnections();
     //const coinRefresh = CoinRefresh.getInstance();
     //coinRefresh.scheduleRefresh();
