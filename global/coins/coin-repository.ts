@@ -59,7 +59,7 @@ export class CoinRepository {
       CoinRepository.instance = new CoinRepository();
       // Additional async setup or initialization if needed
     }
-    console.log("%CoinRepository ---> initialized...", DColors.cyan);
+    console.log("%cCoinRepository ---> initialized...", DColors.cyan);
     return CoinRepository.instance;
   }
 

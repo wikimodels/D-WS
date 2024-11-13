@@ -32,17 +32,55 @@ export class CoinOperator {
   private static readonly PROJECT_NAME = PROJECT_NAME;
   private static readonly CLASS_NAME = "CoinOperator";
 
+  // Static method to connect with retry logic
+  private static async connectWithRetry(): Promise<MongoClient> {
+    const maxRetries = 15; // Number of retry attempts
+    const retryDelay = 2000; // Delay between retries (in ms)
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const newClient = new MongoClient();
+        await newClient.connect(CoinOperator.MONGO_DB); // Use the class constant
+        console.log("Connected to MongoDB!");
+        return newClient; // Return the connected client
+      } catch (err) {
+        console.error(`Connection attempt ${attempt} failed:`, err);
+
+        // If all attempts fail, throw an error
+        if (attempt === maxRetries) {
+          throw new Error(
+            "Failed to connect to MongoDB after multiple attempts"
+          );
+        }
+
+        // Wait before retrying
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+      }
+    }
+
+    throw new Error("Unable to establish connection to MongoDB"); // Fallback error
+  }
+
+  // Singleton method to initialize the instance
   public static async initializeInstance(): Promise<CoinOperator> {
     if (!CoinOperator.instance) {
-      this.dbClient = new MongoClient();
-      await this.dbClient.connect(this.MONGO_DB);
-      this.db = this.dbClient.database(this.dbName);
-      await this.initializeCoinsFromDb(CoinsCollections.CoinRepo);
-      CoinOperator.instance = new CoinOperator();
-      console.log(
-        `%c${this.PROJECT_NAME}:${this.CLASS_NAME} ---> initialized...`,
-        DColors.magenta
-      );
+      try {
+        // Use the connectWithRetry function to connect to MongoDB
+        CoinOperator.dbClient = await CoinOperator.connectWithRetry(); // Connect with retry logic
+        CoinOperator.db = CoinOperator.dbClient.database(CoinOperator.dbName);
+
+        // Explicitly call initializeCoinsFromDb after the database is ready
+        await CoinOperator.initializeCoinsFromDb(CoinsCollections.CoinAtWork); // Example method to load coins
+
+        CoinOperator.instance = new CoinOperator(); // Create the singleton instance
+        console.log(
+          `%c${CoinOperator.PROJECT_NAME}:${CoinOperator.CLASS_NAME} ---> initialized...`,
+          "color: magenta"
+        );
+      } catch (error) {
+        console.error("CoinOperator initialization failed:", error);
+        throw error; // Re-throw the error to notify that the initialization failed
+      }
     }
     return CoinOperator.instance;
   }
