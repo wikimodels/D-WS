@@ -9,12 +9,13 @@ import initializeSantimentProvider from "./app/initialize-santiment-provider.ts"
 
 import { TF } from "./models/shared/timeframes.ts";
 import initializeWsConnManagers from "./app/intialize-ws-conn-managers.ts";
-import { AlertWatcher } from "./global/alert/alert-watcher.ts";
 import initializeAlertWatcher from "./app/intialize-alert-watcher.ts";
+import initializeAlertOperator from "./app/intialize-alert-operator.ts";
 initializeCoinOperator()
   .then(() => initializeCoinRepository())
   .then(() => initializeCoinProvider())
   .then(() => initializeAlertTvOperator())
+  .then(() => initializeAlertOperator())
   .then(() => initializeSantimentProvider())
   .then(() => initializeWsConnManagers(TF.m1))
   .then(() => initializeAlertWatcher())

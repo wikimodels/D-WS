@@ -17,13 +17,14 @@ import type { Coin } from "../../models/coin/coin.ts";
 import { DColors } from "../../models/shared/colors.ts";
 import { designateCategories } from "../utils/designate-categories.ts";
 import { designateLinks } from "../utils/designate-links.ts";
-import { ObjectId } from "https://deno.land/x/web_bson@v0.2.5/mod.ts";
 import { filterUpdateData } from "../utils/filter-update-data.ts";
+import { CoinsCollections } from "../../models/coin/coins-collections.ts";
 
 const { MONGO_DB, PROJECT_NAME } = await load();
 
 export class CoinOperator {
   private static instance: CoinOperator | null = null;
+  private static coinsRepo = new Map<string, Coin>();
   private static dbClient: MongoClient | null = null;
   private static db: Database | null = null;
   private static readonly dbName = "general";
@@ -36,6 +37,7 @@ export class CoinOperator {
       this.dbClient = new MongoClient();
       await this.dbClient.connect(this.MONGO_DB);
       this.db = this.dbClient.database(this.dbName);
+      await this.initializeCoinsFromDb(CoinsCollections.CoinRepo);
       CoinOperator.instance = new CoinOperator();
       console.log(
         `%c${this.PROJECT_NAME}:${this.CLASS_NAME} ---> initialized...`,
@@ -86,6 +88,10 @@ export class CoinOperator {
       // Extract and convert ObjectIds to strings
       const insertedId = (res as Bson.ObjectId).toString();
 
+      if (collectionName == CoinsCollections.CoinRepo) {
+        this.coinsRepo.clear();
+        await this.initializeCoinsFromDb(CoinsCollections.CoinRepo);
+      }
       // Return a successful InsertResult object
       return {
         inserted: insertedId != undefined,
@@ -121,7 +127,10 @@ export class CoinOperator {
         (id as Bson.ObjectId).toString()
       );
 
-      // Return a successful InsertResult object
+      if (collectionName == CoinsCollections.CoinRepo) {
+        this.coinsRepo.clear();
+        await this.initializeCoinsFromDb(CoinsCollections.CoinRepo);
+      }
       return {
         inserted: true,
         insertedCount: insertedIds.length,
@@ -155,6 +164,11 @@ export class CoinOperator {
 
       const deletedCount = await collection.deleteMany(filter);
 
+      if (collectionName == CoinsCollections.CoinRepo) {
+        this.coinsRepo.clear();
+        await this.initializeCoinsFromDb(CoinsCollections.CoinRepo);
+      }
+
       return { deleted: deletedCount > 0, deletedCount };
     } catch (error: any) {
       const errorMsg =
@@ -178,6 +192,11 @@ export class CoinOperator {
       const filter = { symbol: symbol };
       const update = { $set: filteredData };
       const res = await collection.updateOne(filter, update);
+
+      if (collectionName == CoinsCollections.CoinRepo) {
+        this.coinsRepo.clear();
+        await this.initializeCoinsFromDb(CoinsCollections.CoinRepo);
+      }
 
       return {
         modified: res.modifiedCount > 0,
@@ -216,6 +235,11 @@ export class CoinOperator {
           update
         );
         modifiedCount += count;
+      }
+
+      if (collectionName == CoinsCollections.CoinRepo) {
+        this.coinsRepo.clear();
+        await this.initializeCoinsFromDb(CoinsCollections.CoinRepo);
       }
 
       return {
@@ -269,6 +293,14 @@ export class CoinOperator {
       result.moved =
         insertCount === deleteCount && deleteCount === coins.length;
 
+      if (
+        sourceCollection == CoinsCollections.CoinRepo ||
+        targetCollection == CoinsCollections.CoinRepo
+      ) {
+        this.coinsRepo.clear();
+        await this.initializeCoinsFromDb(CoinsCollections.CoinRepo);
+      }
+
       return result;
     } catch (error) {
       const errorMsg = "CoinOperator:moveCoins() ---> Error moving documents";
@@ -305,5 +337,35 @@ export class CoinOperator {
       functionName,
       error
     );
+  }
+
+  // Method to retrieve coins from the database and populate the coins map
+  private static async initializeCoinsFromDb(
+    collectionName: string
+  ): Promise<void> {
+    try {
+      const coins = await this.getAllCoins(collectionName);
+      // Populate the coins map with a single Coin per key
+      coins.forEach((coin) => {
+        const key = coin.symbol; // Use symbol as the unique key
+        this.coinsRepo.set(key, coin);
+      });
+
+      console.log(
+        `%c${this.PROJECT_NAME}:${this.CLASS_NAME} ---> coins loaded from DB...`,
+        DColors.green
+      );
+    } catch (error: any) {
+      console.error(
+        `%c${this.PROJECT_NAME}:${this.CLASS_NAME}:initializeCoinsFromDb ---> failed to fetch coins `,
+        DColors.red,
+        error
+      );
+      await this.notifyAboutError("initializeCoinsFromDb", error);
+    }
+  }
+
+  public static getAllWorkingCoinsFromRepo() {
+    return Array.from(this.coinsRepo.values());
   }
 }

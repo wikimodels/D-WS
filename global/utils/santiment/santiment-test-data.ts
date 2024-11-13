@@ -104,5 +104,3 @@ export const testSantimentItems: SantimentItem[] = [
     })),
   },
 ];
-
-console.log(testSantimentItems);

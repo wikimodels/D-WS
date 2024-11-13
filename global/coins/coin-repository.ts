@@ -97,20 +97,6 @@ export class CoinRepository {
 
       const data = await response.json();
 
-      // Access Bybit rate limit headers
-      //TODO
-      const rateLimit = response.headers.get("X-Bapi-Limit-Status");
-      const rateLimitRemaining = response.headers.get("X-Bapi-Limit");
-      const rateLimitReset = response.headers.get(
-        "X-Bapi-Limit-Reset-Timestamp"
-      );
-      //TODO
-      console.log(`your remaining requests for current endpoint: ${rateLimit}`);
-      console.log(
-        `your current limit for current endpoint: ${rateLimitRemaining}`
-      );
-      console.log(`X-Bapi-Limit-Reset-Timestamp: ${rateLimitReset}`);
-
       // Check if Bybit's response contains the expected "OK" message
       if (data.retMsg !== "OK") {
         throw new Error(

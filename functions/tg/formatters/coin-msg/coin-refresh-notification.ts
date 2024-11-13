@@ -34,8 +34,10 @@ export function formatCoinRefreshNotificationMsg(
   const timestamp = UnixToNamedTimeRu(new Date().getTime());
 
   const msg = `
-  <b>🔄 ${projectName}:${className} Turnover24h Update Done</b>
+  <b>🈯️ ${projectName}:${className} Coin Refreshment Done</b>
   
+  <i>Procedure renewed the list of Coin-Provider Collection.</i>
+
   <b>Deleted:</b>  ${result.deleteResult.deletedCount}
   <b>Inserted:</b>  ${result.insertResult.insertedCount}
   ━━━━━━━━━━━━━    

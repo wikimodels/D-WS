@@ -1,12 +1,12 @@
 import { AlertTvOperator } from "../global/alert/alert-tv-operator.ts";
 
-const initializeAlertTvOperator = async () => {
+const initializeAlertOperator = async () => {
   try {
     await AlertTvOperator.initializeInstance();
   } catch (error) {
-    console.error("Failed to initialize AlertTvOperator:", error);
+    console.error("Failed to initialize CoinOperator:", error);
     throw error;
   }
 };
 
-export default initializeAlertTvOperator;
+export default initializeAlertOperator;

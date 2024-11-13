@@ -12,6 +12,8 @@ import { notifyAboutCoinsRefresh } from "../../functions/tg/notifications/coin-r
 import { CoinOperator } from "./coin-operator.ts";
 import { CoinsCollections } from "../../models/coin/coins-collections.ts";
 import type { RefreshmentResult } from "../../models/mongodb/operations.ts";
+import { printInline } from "../utils/print-in-line.ts";
+import { yellow } from "https://deno.land/std@0.154.0/fmt/colors.ts";
 
 const {
   BYBIT_PERP_TICKETS_URL,
@@ -103,21 +105,7 @@ export class CoinProvider {
         return [];
       }
       const data = await response.json();
-      // Access response headers
-      const usedWeight = response.headers.get("X-MBX-USED-WEIGHT");
-      const usedWeight1m = response.headers.get("X-MBX-USED-WEIGHT-1M");
-      console.log(
-        "====>>>>> usedWeight",
-        usedWeight,
-        "usedWeight1m",
-        usedWeight1m
-      );
-      if (usedWeight1m) {
-        this.apiLimit1m += parseInt(usedWeight1m);
-      }
-      if (usedWeight) {
-        this.apiLimit += parseInt(usedWeight);
-      }
+
       if (Array.isArray(data)) {
         console.log(
           `%c${this.PROJECT}:${this.CLASS_NAME} ---> Binance Data received...`,
@@ -350,11 +338,11 @@ export class CoinProvider {
   private async enrichWithCoinGeckoData(coins: Coin[]): Promise<Coin[]> {
     for (const [index, coin] of coins.entries()) {
       await this.rateLimitDelay(2000);
-      console.log(
-        `${this.PROJECT}:${
-          this.CLASS_NAME
-        } ---> Enriching with CoinGecko Data ${index + 1} of ${coins.length}`
-      );
+      const msg = `${this.PROJECT}:${
+        this.CLASS_NAME
+      } ---> Enriching with CoinGecko Data ${index + 1} of ${coins.length}`;
+
+      printInline(msg, yellow);
 
       if (coin.coinGeckoId) {
         const url = `${this.COIN_GECKO_API}/coins/${coin.coinGeckoId}?x_cg_demo_api_key=${this.COIN_GECKO_API_KEY}`;

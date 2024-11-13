@@ -8,9 +8,10 @@ import {
 } from "../kline/kline-repo.ts";
 import { notifyAboutTriggeredAlerts } from "../../functions/tg/notifications/triggered-alertst.ts";
 import { DColors } from "../../models/shared/colors.ts";
-import { clearAlertTv, getAllTvAlerts } from "./alert-tv-repo.ts";
 import { notifyAboutFailedFunction } from "../../functions/tg/notifications/failed-function.ts";
 import { UnixToTime } from "../../functions/utils/time-converter.ts";
+import { AlertTvOperator } from "./alert-tv-operator.ts";
+import { CoinOperator } from "../coins/coin-operator.ts";
 
 const { PROJECT_NAME } = await load();
 
@@ -25,15 +26,16 @@ export class AlertWatcher {
     return new Promise((resolve) => {
       setInterval(async () => {
         try {
-          const alerts = await AlertOperator.getAllAlerts(
-            AlertsCollections.WorkingAlerts
-          );
-          const alertsTv = getAllTvAlerts();
-          const triggeredAlerts: Alert[] = [];
+          const coins = CoinOperator.getAllWorkingCoinsFromRepo();
+          const alerts = await AlertOperator.getAllWorkingAlertsFromRepo();
+          const alertsTv = await AlertTvOperator.getAllTvAlertsFromRepo(coins);
 
-          [...alerts, ...alertsTv].forEach((alert) => {
+          const triggeredAlerts: Alert[] = [...alertsTv];
+
+          alerts.forEach((alert) => {
             const candle = getLatestDataFromKlineRepo(alert.symbol);
             if (
+              alert.isActive &&
               candle &&
               candle.low <= alert.price &&
               candle.high >= alert.price
@@ -41,12 +43,13 @@ export class AlertWatcher {
               const activationTime = new Date().getTime();
               alert.activationTime = activationTime;
               alert.activationTimeStr = UnixToTime(activationTime);
+              alert.description = `high: ${candle.high} low: ${candle.low} price: ${alert.price}`;
               triggeredAlerts.push(alert);
             }
           });
 
           clearKlineRepo();
-          clearAlertTv();
+          AlertTvOperator.clearAllTvAlerts();
 
           // Only insert and notify if there are triggered alerts
           if (triggeredAlerts.length > 0) {
@@ -76,7 +79,7 @@ export class AlertWatcher {
             error
           );
         }
-      }, 60 * 1000);
+      }, 20 * 1000);
 
       // Resolve immediately after starting the interval to allow chaining
       resolve();

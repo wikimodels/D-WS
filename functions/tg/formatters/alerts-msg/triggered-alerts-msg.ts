@@ -1,12 +1,13 @@
+import type { Alert } from "../../../../models/alerts/alert.ts";
 import { UnixToNamedTimeRu } from "../../../utils/time-converter.ts";
 
-export function formatTriggeredAlertsMsg(alertObjs: Alert[]) {
-  let msg = "<b>✴️ TRIGGERED ALERTS</b>\n\n";
-
-  alertObjs.forEach((a, index) => {
+export function formatTriggeredAlertsMsg(alerts: Alert[]) {
+  let msg = "<b>✴️ TRIGGERED ALERTS</b>\n";
+  alerts.forEach((a, index) => {
     msg += `
-<b>${index + 1}. <a href="${a.tvLink}">${a.symbol}</a></b>
-📌 <i>${a.alertName}</i> 
+<b>${index + 1}. <a href="${a.tvLink}">${a.symbol}</a> ➡️ <i>${
+      a.alertName
+    }</i></b>
 `;
   });
 
