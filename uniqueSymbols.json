@@ -1,4 +1,4 @@
-export const coinsDone = [
+[
   "1000SATSUSDT",
   "1INCHUSDT",
   "1MBABYDOGEUSDT",
@@ -362,4 +362,8 @@ export const coinsDone = [
   "ZENUSDT",
   "ZETAUSDT",
   "ZILUSDT",
-];
+  "ZKJUSDT",
+  "ZKUSDT",
+  "ZROUSDT",
+  "ZRXUSDT"
+]

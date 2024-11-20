@@ -1,4 +1,5 @@
 export type SantimentItem = {
+  _id: string;
   areaStyle: {
     color: string;
     opacity: number;

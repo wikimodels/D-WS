@@ -4,7 +4,7 @@ const initializeSantimentProvider = async () => {
   try {
     await SantimentProvider.initializeInstance();
   } catch (error) {
-    console.error("Failed to initialize CoinOperator:", error);
+    console.error("Failed to initialize SantimentProvider:", error);
     throw error;
   }
 };

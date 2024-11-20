@@ -156,22 +156,7 @@ export class CoinRepository {
       }
 
       const data = await response.json();
-      // Access response headers
-      const usedWeight = response.headers.get("X-MBX-USED-WEIGHT");
-      const usedWeight1m = response.headers.get("X-MBX-USED-WEIGHT-1M");
-      // console.log(
-      //   "====>>>>> usedWeight",
-      //   usedWeight,
-      //   "usedWeight1m",
-      //   usedWeight1m
-      // );
-      if (usedWeight1m) {
-        //this.apiLimit1m += parseInt(usedWeight1m);
-      }
-      if (usedWeight) {
-        //this.apiLimit += parseInt(usedWeight);
-      }
-      // Validate data structure to ensure expected format
+
       if (
         !Array.isArray(data) ||
         !data[0] ||
@@ -307,7 +292,7 @@ export class CoinRepository {
       return {
         symbol: c.symbol,
         updatedData: {
-          turnover24h: c.turnover24h,
+          turnover24h: Number(c.turnover24h),
           category: c.category,
         },
       };
@@ -333,6 +318,7 @@ export class CoinRepository {
     const turnover24hData = this.getTurnover24Data(result.successfulData);
     coins = this.updateCoinsTurnover24h(coins, turnover24hData);
     coins = this.updateCoinsCategories(coins, this.LOWEST_TURNOVER24H);
+
     const modifyResult = await this.saveUpdates(coins);
 
     if (result.failedData.length > 0) {
@@ -398,8 +384,7 @@ export class CoinRepository {
       const binanceCoins = coins.filter(
         (c) => c.coinExchange == "bi" || c.coinExchange == "biby"
       );
-      //TODO
-      console.log("BINANCE COINS ---> ", binanceCoins.length);
+
       const bybitCoins = coins.filter(
         (c) => c.coinExchange == "bу" || c.coinExchange == "biby"
       );
@@ -414,8 +399,7 @@ export class CoinRepository {
         "D",
         400
       );
-      //TODO:
-      console.log("BYBIT Coins ---> ", bybitCoins.length);
+
       console.log(
         "%cTurnover24h Update Procedure ---> successfully done...",
         DColors.magenta

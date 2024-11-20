@@ -146,3 +146,17 @@ export const moveCoins = async (req: any, res: any) => {
       .send("An internal server error occurred while deleting the coin.");
   }
 };
+
+export const getCoinsRepoStatistics = async (_req: any, res: any) => {
+  try {
+    const result = await CoinOperator.getCoinsRepoStatistics();
+    if (result) {
+      res.status(200).send(result);
+    } else {
+      res.status(503).send("CoinOperator not initialized yet");
+    }
+  } catch (error) {
+    console.error("Error retrieving working coins statistics:", error);
+    res.status(500).send("An error occurred while fetching coins statistics.");
+  }
+};

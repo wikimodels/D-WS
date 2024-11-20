@@ -17,8 +17,9 @@ import type { Coin } from "../../models/coin/coin.ts";
 import { DColors } from "../../models/shared/colors.ts";
 import { designateCategories } from "../utils/designate-categories.ts";
 import { designateLinks } from "../utils/designate-links.ts";
-import { filterUpdateData } from "../utils/filter-update-data.ts";
 import { CoinsCollections } from "../../models/coin/coins-collections.ts";
+import { filterUpdateData } from "../utils/filter-update-data.ts";
+import { generateCoinsStatistics } from "../utils/generate-coins-statistics.ts";
 
 const { MONGO_DB, PROJECT_NAME } = await load();
 
@@ -41,7 +42,10 @@ export class CoinOperator {
       try {
         const newClient = new MongoClient();
         await newClient.connect(CoinOperator.MONGO_DB); // Use the class constant
-        console.log("Connected to MongoDB!");
+        console.log(
+          `%c${this.PROJECT_NAME}:${this.CLASS_NAME} ---> connected to db`,
+          DColors.magenta
+        );
         return newClient; // Return the connected client
       } catch (err) {
         console.error(`Connection attempt ${attempt} failed:`, err);
@@ -158,20 +162,48 @@ export class CoinOperator {
   ): Promise<InsertResult> {
     try {
       const collection = this.getCollection(collectionName);
-      const res = await collection.insertMany(coins);
+      const batchSize = 50;
+      const totalBatches = Math.ceil(coins.length / batchSize);
 
-      // Extract and convert ObjectIds to strings
-      const insertedIds = Object.values(res.insertedIds).map((id) =>
-        (id as Bson.ObjectId).toString()
-      );
+      let insertedCount = 0;
 
-      if (collectionName == CoinsCollections.CoinRepo) {
+      for (let i = 0; i < totalBatches; i++) {
+        const batch = coins.slice(i * batchSize, (i + 1) * batchSize);
+
+        try {
+          const res = await collection.insertMany(batch);
+
+          // Extract and convert ObjectIds to strings
+          const insertedIds = Object.values(res.insertedIds).map((id) =>
+            (id as Bson.ObjectId).toString()
+          );
+
+          insertedCount += insertedIds.length;
+
+          console.log(
+            `${this.PROJECT_NAME}:${this.CLASS_NAME}:AddCoins() ---> Batch ${
+              i + 1
+            }/${totalBatches} inserted: ${insertedIds.length} records`
+          );
+        } catch (batchError) {
+          console.error(
+            `${this.PROJECT_NAME}:${
+              this.CLASS_NAME
+            }:AddCoins() ---> Failed to insert batch ${i + 1}/${totalBatches}`,
+            batchError
+          );
+          throw batchError;
+        }
+      }
+
+      if (collectionName === CoinsCollections.CoinRepo) {
         this.coinsRepo.clear();
         await this.initializeCoinsFromDb(CoinsCollections.CoinRepo);
       }
+
       return {
         inserted: true,
-        insertedCount: insertedIds.length,
+        insertedCount,
       } as InsertResult;
     } catch (error) {
       const errorMsg =
@@ -258,19 +290,17 @@ export class CoinOperator {
   public static async updateManyCoins(
     collectionName: string,
     coins: Array<{ symbol: string; updatedData: Partial<Coin> }>
-  ): Promise<{ modifiedCount: number; modified: boolean }> {
+  ): Promise<ModifyResult> {
     try {
       const collection = this.getCollection(collectionName);
       let modifiedCount = 0;
 
       for (const coin of coins) {
-        const filteredData = filterUpdateData(coin);
-        const filter = { symbol: coin.symbol };
-        const update = { $set: filteredData };
+        const filteredData = filterUpdateData(coin.updatedData);
 
         const { modifiedCount: count } = await collection.updateOne(
-          filter,
-          update
+          { symbol: coin.symbol },
+          { $set: filteredData }
         );
         modifiedCount += count;
       }
@@ -405,5 +435,10 @@ export class CoinOperator {
 
   public static getAllWorkingCoinsFromRepo() {
     return Array.from(this.coinsRepo.values());
+  }
+
+  public static async getCoinsRepoStatistics() {
+    const coins = await CoinOperator.getAllCoins(CoinsCollections.CoinRepo);
+    return generateCoinsStatistics(coins);
   }
 }

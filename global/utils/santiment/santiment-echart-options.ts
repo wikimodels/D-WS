@@ -1,8 +1,13 @@
 // deno-lint-ignore-file no-explicit-any
 import type { SantimentItem } from "../../../models/santiment/santiment-item.ts";
 
-export function getSantimentEChartOptions(item: SantimentItem) {
-  const options = {
+export function getSantimentEChartOptions(items: SantimentItem[]): any[] {
+  if (!items || items.length === 0) {
+    console.warn("No items provided to generate ECharts options.");
+    return [];
+  }
+
+  return items.map((item) => ({
     tooltip: {
       trigger: "axis",
       position: function (pt: any) {
@@ -11,9 +16,14 @@ export function getSantimentEChartOptions(item: SantimentItem) {
     },
     title: {
       left: "center",
-      text: item.label,
+      text: item.label || "Untitled Chart",
     },
-    toolbox: {},
+    toolbox: {
+      feature: {
+        saveAsImage: { show: true },
+        dataZoom: { show: true },
+      },
+    },
     xAxis: {
       type: "time",
       boundaryGap: false,
@@ -24,15 +34,17 @@ export function getSantimentEChartOptions(item: SantimentItem) {
     },
     series: [
       {
-        name: "Fake Data",
+        name: item.label || "Data Series",
         type: "line",
         smooth: true,
         symbol: "none",
-        lineStyle: item.lineStyle,
-        areaStyle: item.areaStyle,
-        data: item.data,
+        lineStyle: item.lineStyle || { width: 1, color: "blue" },
+        areaStyle: item.areaStyle || { opacity: 0.3 },
+        data: (item.data || []).map((entry: any) => [
+          new Date(entry.datetime).getTime(), // Convert datetime to timestamp
+          entry.value,
+        ]),
       },
     ],
-  };
-  return options;
+  }));
 }

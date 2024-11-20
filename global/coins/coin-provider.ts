@@ -25,6 +25,7 @@ const {
   SANTIMENT_API_URL,
   SANTIMENT_API_KEY,
   LOWEST_TURNOVER24H,
+  IMG_FALLBACL_URL,
 } = await load();
 
 export class CoinProvider {
@@ -289,9 +290,9 @@ export class CoinProvider {
       const coinGeckoId = coinGeckoIdMap.get(modifiedSymbol);
       if (coinGeckoId) {
         c.coinGeckoId = coinGeckoId;
-        c.coinGeckoMissing = false;
+        c.coinGeckoAvailable = true;
       } else {
-        c.coinGeckoMissing = true;
+        c.coinGeckoAvailable = false;
       }
     });
 
@@ -326,9 +327,9 @@ export class CoinProvider {
         coin.santimentName = santimentItem.name;
         coin.santimentTicker = santimentItem.ticker;
         coin.slug = santimentItem.slug;
-        coin.santimentMissing = false;
+        coin.santimentAvailable = true;
       } else {
-        coin.santimentMissing = true;
+        coin.santimentAvailable = false;
       }
     });
 
@@ -385,7 +386,9 @@ export class CoinProvider {
             data.developer_data?.code_additions_deletions_4_weeks.deletions;
           coin.gh_commit_count_4_weeks =
             data.developer_data?.commit_count_4_weeks;
-          coin.image_url = data.image?.large;
+          coin.image_url = data.image?.large?.includes("missing")
+            ? IMG_FALLBACL_URL
+            : data.image?.large;
         } catch (error) {
           // Log the error without stopping the loop
           console.error(`Error fetching data for ${coin.symbol}:`, error);
@@ -439,14 +442,11 @@ export class CoinProvider {
       coins = this.mergeData(binanceData, bybitData);
       coins = await this.sortOutUniqueCoins(coins);
       coins = await this.assignCoinGeckoIds(coins);
-      //coins = await this.assignSantimentIds(coins);
+      coins = await this.assignSantimentIds(coins);
       coins = await this.enrichWithCoinGeckoData(coins);
       coins = CoinOperator.assignCategories(coins, this.LOWEST_TURNOVER24H);
       coins = CoinOperator.assingLinks(coins);
       const result = await this.saveUniqueCoinsToDb(coins);
-      //TODO
-      console.log("API LIMIT ===> ", this.apiLimit);
-      console.log("API LIMIT 1M ===> ", this.apiLimit1m);
       await notifyAboutCoinsRefresh(this.PROJECT, this.CLASS_NAME, result);
       return result;
     } catch (error: any) {

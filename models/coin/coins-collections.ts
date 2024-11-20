@@ -4,4 +4,5 @@ export enum CoinsCollections {
   CoinProvider = "coin-provider",
   CoinSorter = "coin-sorter",
   CoinAtWork = "coin-at-work",
+  CoinSantiment = "coin-santiment",
 }

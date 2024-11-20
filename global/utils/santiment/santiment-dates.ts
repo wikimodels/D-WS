@@ -1,10 +1,14 @@
-export function monthsAgo(month: number) {
-  const time = new Date();
-  time.setMonth(time.getMonth() - month);
-  return time.toISOString();
-}
+export function getFromAndToTime(monthsBack: number): {
+  fromTime: string;
+  toTime: string;
+} {
+  const now = new Date(); // Current time
+  const toTime = now.toISOString(); // Current time as ISO string
 
-export function currentMonth() {
-  const time = new Date();
-  return time.toISOString();
+  // Calculate 'monthsBack' months ago
+  const pastDate = new Date();
+  pastDate.setMonth(pastDate.getMonth() - monthsBack); // Subtract monthsBack months
+  const fromTime = pastDate.toISOString();
+
+  return { fromTime, toTime };
 }
