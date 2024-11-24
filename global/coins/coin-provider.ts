@@ -11,7 +11,7 @@ import { Status } from "../../models/shared/status.ts";
 import { notifyAboutCoinsRefresh } from "../../functions/tg/notifications/coin-refresh.ts";
 import { CoinOperator } from "./coin-operator.ts";
 import { CoinsCollections } from "../../models/coin/coins-collections.ts";
-import type { RefreshmentResult } from "../../models/mongodb/operations.ts";
+import type { InsertResult } from "../../models/mongodb/operations.ts";
 import { printInline } from "../utils/print-in-line.ts";
 import { yellow } from "https://deno.land/std@0.154.0/fmt/colors.ts";
 
@@ -40,8 +40,7 @@ export class CoinProvider {
   private readonly LOWEST_TURNOVER24H = parseFloat(LOWEST_TURNOVER24H);
   private readonly SANTIMENT_API_URL = SANTIMENT_API_URL;
   private readonly SANTIMENT_API_KEY = SANTIMENT_API_KEY;
-  public apiLimit1m = 0;
-  public apiLimit = 0;
+
   private constructor() {}
 
   public static initializeInstance(): CoinProvider {
@@ -175,28 +174,19 @@ export class CoinProvider {
   }
 
   private async sortOutUniqueCoins(coins: Coin[]) {
-    const originCoins: Coin[] = await CoinOperator.getAllCoins(
-      CoinsCollections.CoinRepo
-    );
-    console.log(
-      `${this.PROJECT}:${this.CLASS_NAME} Origin Coins ---> `,
-      originCoins.length
-    );
-
-    const blackListCoins: Coin[] = await CoinOperator.getAllCoins(
-      CoinsCollections.CoinBlackList
-    );
+    const originCoins: Coin[] = await CoinOperator.getAllCoinsFromRepo();
 
     const originSymbols = new Set(originCoins.map((coin: Coin) => coin.symbol));
-    const blackListSymbols = new Set(
-      blackListCoins.map((coin: Coin) => coin.symbol)
-    );
 
-    const sortedCoins = coins.filter(
-      (item) =>
-        !originSymbols.has(item.symbol) && !blackListSymbols.has(item.symbol)
-    );
+    const sortedCoins = coins.filter((item) => !originSymbols.has(item.symbol));
     return sortedCoins;
+  }
+
+  private setCoinCollectionToCoinProvider(coins: Coin[]) {
+    coins.forEach((c) => {
+      c.collection = CoinsCollections.CoinProvider;
+    });
+    return coins;
   }
 
   private async fetchCoinGeckoIds() {
@@ -410,37 +400,28 @@ export class CoinProvider {
     return coins;
   }
 
-  private async saveUniqueCoinsToDb(coins: Coin[]): Promise<RefreshmentResult> {
-    const deleteResult = await CoinOperator.deleteCoins(
-      CoinsCollections.CoinProvider
-    );
-    const insertResult = await CoinOperator.addCoins(
-      CoinsCollections.CoinProvider,
-      coins
-    );
-    console.log(
-      `%c${this.PROJECT}:${this.CLASS_NAME} ---> Final Saving: Clean Db Res `,
-      DColors.cyan,
-      deleteResult
-    );
+  private async saveUniqueCoinsToDb(coins: Coin[]): Promise<InsertResult> {
+    const insertResult = await CoinOperator.addCoins(coins);
+
     console.log(
       `%c${this.PROJECT}:${this.CLASS_NAME} ---> Final Saving: Insertion into Db Res `,
       DColors.green,
       insertResult
     );
-    return { insertResult, deleteResult };
+    return insertResult;
   }
 
   //----------------------------
   // ✅ REFRESHMENT PROCEDURE
   //----------------------------
-  public async runRefreshmentPocedure(): Promise<RefreshmentResult> {
+  public async runRefreshmentPocedure(): Promise<InsertResult> {
     try {
       let coins: Coin[] = [];
       const binanceData = await this.fetchBinanceData();
       const bybitData = await this.fetchBybitData();
       coins = this.mergeData(binanceData, bybitData);
       coins = await this.sortOutUniqueCoins(coins);
+      coins = await this.setCoinCollectionToCoinProvider(coins);
       coins = await this.assignCoinGeckoIds(coins);
       coins = await this.assignSantimentIds(coins);
       coins = await this.enrichWithCoinGeckoData(coins);

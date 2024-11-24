@@ -11,6 +11,7 @@ import { CoinOperator } from "./coin-operator.ts";
 import { CoinsCollections } from "../../models/coin/coins-collections.ts";
 import type { ModifyResult } from "../../models/mongodb/operations.ts";
 import { sendTgBusinessMessage } from "../../functions/tg/tg-clients.ts";
+import type { CoinUpdateData } from "../../models/coin/coin-update-data.ts";
 
 const {
   PROJECT_NAME,
@@ -287,20 +288,10 @@ export class CoinRepository {
     return coins;
   }
 
-  private async saveUpdates(coins: Coin[]): Promise<ModifyResult> {
-    const updateData = coins.map((c) => {
-      return {
-        symbol: c.symbol,
-        updatedData: {
-          turnover24h: Number(c.turnover24h),
-          category: c.category,
-        },
-      };
-    });
-    const modifyResult = await CoinOperator.updateManyCoins(
-      CoinsCollections.CoinRepo,
-      updateData
-    );
+  private async saveUpdates(
+    updateData: Array<CoinUpdateData>
+  ): Promise<ModifyResult> {
+    const modifyResult = await CoinOperator.updateCoins(updateData);
     return modifyResult;
   }
 
@@ -319,7 +310,17 @@ export class CoinRepository {
     coins = this.updateCoinsTurnover24h(coins, turnover24hData);
     coins = this.updateCoinsCategories(coins, this.LOWEST_TURNOVER24H);
 
-    const modifyResult = await this.saveUpdates(coins);
+    const updateData: Array<CoinUpdateData> = coins.map((c) => {
+      return {
+        symbol: c.symbol,
+        propertiesToUpdate: {
+          turnover24h: c.turnover24h,
+          category: c.category,
+        },
+      };
+    });
+
+    const modifyResult = await this.saveUpdates(updateData);
 
     if (result.failedData.length > 0) {
       const symbols = result.failedData.map((d) => d.symbol);
@@ -353,7 +354,18 @@ export class CoinRepository {
     const turnover24hData = this.getTurnover24Data(result.successfulData);
     coins = this.updateCoinsTurnover24h(coins, turnover24hData);
     coins = this.updateCoinsCategories(coins, this.LOWEST_TURNOVER24H);
-    const modifyResult = await this.saveUpdates(coins);
+
+    const updateData: Array<CoinUpdateData> = coins.map((c) => {
+      return {
+        symbol: c.symbol,
+        propertiesToUpdate: {
+          turnover24h: c.turnover24h,
+          category: c.category,
+        },
+      };
+    });
+
+    const modifyResult = await this.saveUpdates(updateData);
 
     if (result.failedData.length > 0) {
       const symbols = result.failedData.map((d) => d.symbol);
@@ -379,7 +391,9 @@ export class CoinRepository {
 
   private async runTurnover24hUpdatePocedure() {
     try {
-      const coins = await CoinOperator.getAllCoins(CoinsCollections.CoinRepo);
+      const coins = (await CoinOperator.getAllCoinsFromRepo()).filter(
+        (c) => c.collection == CoinsCollections.CoinRepo
+      );
 
       const binanceCoins = coins.filter(
         (c) => c.coinExchange == "bi" || c.coinExchange == "biby"

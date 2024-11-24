@@ -1,11 +1,33 @@
 // deno-lint-ignore-file no-explicit-any no-explicit-any
 import { CoinOperator } from "../../global/coins/coin-operator.ts";
+import type { CoinUpdateData } from "../../models/coin/coin-update-data.ts";
 import type { Coin } from "../../models/coin/coin.ts";
 
-export const getAllCoins = async (req: any, res: any) => {
+export const getAllCoins = (_req: any, res: any) => {
+  try {
+    const coins = CoinOperator.getAllCoinsFromRepo();
+    if (coins) {
+      res.status(200).send(coins);
+    } else {
+      res.status(503).send("CoinOperator not initialized yet");
+    }
+  } catch (error) {
+    console.error("Error retrieving coins:", error);
+    res.status(500).send("An error occurred while fetching coins.");
+  }
+};
+
+export const getCoinsByCollectionName = (req: any, res: any) => {
   try {
     const collectionName = req.query.collectionName;
-    const coins = await CoinOperator.getAllCoins(collectionName);
+    if (!collectionName) {
+      return res
+        .status(400)
+        .send("Bad Request: 'collectionName' must be a string.");
+    }
+    const coins = CoinOperator.getAllCoinsFromRepo().filter(
+      (c) => c.collection == collectionName
+    );
     if (coins) {
       res.status(200).send(coins);
     } else {
@@ -19,17 +41,15 @@ export const getAllCoins = async (req: any, res: any) => {
 
 export const deleteCoins = async (req: any, res: any) => {
   const { symbols } = req.body;
-  const { collectionName } = req.query;
-  if (!symbols || !collectionName || !Array.isArray(symbols)) {
+
+  if (!symbols || !Array.isArray(symbols)) {
     return res
       .status(400)
-      .send(
-        "Bad Request: 'symbols' must be an array of strings. 'collectionName' must be a string."
-      );
+      .send("Bad Request: 'symbols' must be an array of strings.");
   }
 
   try {
-    const result = await CoinOperator.deleteCoins(collectionName, symbols);
+    const result = await CoinOperator.deleteCoins(symbols);
 
     if (!result.deleted) {
       return res.status(404).send(`Something went wrong with deletion.`);
@@ -46,8 +66,8 @@ export const deleteCoins = async (req: any, res: any) => {
 
 export const addCoin = async (req: any, res: any) => {
   const coin: Coin = req.body;
-  const collectionName = req.query.collectionName;
-  if (!coin || !coin.symbol || !collectionName) {
+
+  if (!coin || !coin.symbol) {
     return res
       .status(400)
       .send(
@@ -56,7 +76,7 @@ export const addCoin = async (req: any, res: any) => {
   }
 
   try {
-    const insertResult = await CoinOperator.addCoin(collectionName, coin);
+    const insertResult = await CoinOperator.addCoin(coin);
     res.status(200).send(insertResult);
   } catch (error) {
     console.error(error);
@@ -66,17 +86,15 @@ export const addCoin = async (req: any, res: any) => {
 
 export const addCoins = async (req: any, res: any) => {
   const coins: Coin[] = req.body;
-  const collectionName = req.query.collectionName;
-  if (!coins || !Array.isArray(coins) || !collectionName) {
+
+  if (!coins || !Array.isArray(coins)) {
     return res
       .status(400)
-      .send(
-        "Bad Request: Invalid update parameters (either 'coins' or 'collectionName')"
-      );
+      .send("Bad Request: Invalid update parameters ('coins')");
   }
 
   try {
-    const insertResult = await CoinOperator.addCoins(collectionName, coins);
+    const insertResult = await CoinOperator.addCoins(coins);
     res.status(200).send(insertResult);
   } catch (error) {
     console.error(error);
@@ -85,24 +103,15 @@ export const addCoins = async (req: any, res: any) => {
 };
 
 export const updateCoin = async (req: any, res: any) => {
-  const coin: Coin = req.body;
-  const collectionName = req.query.collectionName;
-  const symbol = req.query.symbol;
-
-  if (!coin || !coin.symbol || !collectionName) {
+  const updateData: CoinUpdateData = req.body;
+  if (!updateData || !updateData.symbol) {
     return res
       .status(400)
-      .send(
-        "Bad Request: Invalid update parameters (either 'coin' or 'collectionName')"
-      );
+      .send("Bad Request: Invalid update parameters ('updateData')");
   }
 
   try {
-    const modiyResult = await CoinOperator.updateCoin(
-      collectionName,
-      symbol,
-      coin
-    );
+    const modiyResult = await CoinOperator.updateCoin(updateData);
     res.status(200).send(modiyResult);
   } catch (error) {
     console.error(error);
@@ -110,40 +119,20 @@ export const updateCoin = async (req: any, res: any) => {
   }
 };
 
-export const moveCoins = async (req: any, res: any) => {
-  const coins = req.body;
-  const sourceCollection = req.query.sourceCollection;
-  const targetCollection = req.query.targetCollection;
-  if (
-    !coins ||
-    !sourceCollection ||
-    !targetCollection ||
-    !Array.isArray(coins)
-  ) {
+export const updateCoins = async (req: any, res: any) => {
+  const updateData: Array<CoinUpdateData> = req.body;
+  if (!updateData || !Array.isArray(updateData)) {
     return res
       .status(400)
-      .send(
-        "Bad Request: 'symbols' must be an array of strings. 'sourceCollection' must be a string. 'targetCollection' must be a string"
-      );
+      .send("Bad Request: Invalid update parameters ('coin')");
   }
 
   try {
-    const result = await CoinOperator.moveCoins(
-      sourceCollection,
-      targetCollection,
-      coins
-    );
-
-    if (!result.moved) {
-      return res.status(404).send(`Something went wrong with moving.`);
-    }
-
-    res.status(200).send(result);
+    const modiyResult = await CoinOperator.updateCoins(updateData);
+    res.status(200).send(modiyResult);
   } catch (error) {
-    console.error("Error deleting coin:", error);
-    res
-      .status(500)
-      .send("An internal server error occurred while deleting the coin.");
+    console.error(error);
+    res.status(500).send("Error saving the coin to the database");
   }
 };
 

@@ -12,12 +12,12 @@ import { notifyAboutFailedFunction } from "../../functions/tg/notifications/fail
 import { UnixToTime } from "../../functions/utils/time-converter.ts";
 import { AlertTvOperator } from "./alert-tv-operator.ts";
 import { CoinOperator } from "../coins/coin-operator.ts";
+import { CoinsCollections } from "../../models/coin/coins-collections.ts";
 
 const { PROJECT_NAME } = await load();
 
 // alert-watcher.ts
 export class AlertWatcher {
-  private static instance: AlertWatcher | null = null;
   private static readonly PROJECT_NAME = PROJECT_NAME;
   private static readonly CLASS_NAME = "AlertWatcher";
 
@@ -26,7 +26,9 @@ export class AlertWatcher {
     return new Promise((resolve) => {
       setInterval(async () => {
         try {
-          const coins = CoinOperator.getAllWorkingCoinsFromRepo();
+          const coins = CoinOperator.getAllCoinsFromRepo().filter(
+            (c) => c.collection == CoinsCollections.CoinRepo
+          );
           const alerts = await AlertOperator.getAllWorkingAlertsFromRepo();
           const alertsTv = await AlertTvOperator.getAllTvAlertsFromRepo(coins);
 

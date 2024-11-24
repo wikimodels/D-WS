@@ -318,9 +318,9 @@ export class SantimentProvider {
         ];
 
         // Fetch all coins with santimentAvailable flag
-        const coins = (
-          await CoinOperator.getAllCoins(CoinsCollections.CoinRepo)
-        ).filter((c) => c.santimentAvailable);
+        const coins = CoinOperator.getAllCoinsFromRepo().filter(
+          (c) => c.santimentAvailable
+        );
 
         // Filter coins whose symbols are not in the uniqueSymbols array
         const filteredCoins = coins.filter(

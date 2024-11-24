@@ -7,7 +7,9 @@ import { BybitWSConnManager } from "../ws/bybit/by-ws-conn-manager.ts";
 
 const initializeWsConnManagers = async (timeframe: TF) => {
   try {
-    const coins = await CoinOperator.getAllCoins(CoinsCollections.CoinRepo);
+    const coins = (await CoinOperator.getAllCoinsFromRepo()).filter(
+      (c) => c.collection == CoinsCollections.CoinRepo
+    );
     const binanceCoins: Coin[] = coins.filter((c) => c.coinExchange == "bi");
     const bybitCoins: Coin[] = coins
       .filter((c) => c.coinExchange == "by" || c.coinExchange == "biby")

@@ -9,7 +9,7 @@ export function formateTurnover24hUpdateNotificationMsg(
   const msg = `
 <b>🔄 ${projectName} Turnover24h Update Done</b>
 
-<i>Just finished updating turnover24h property for Bybit and Binance Working Coins</i>
+<i>Just finished updating turnover24h property for Bybit and Binance  Coins Repo</i>
 
 <b>Bybit modified:</b>  ${bybitModifyResult.modifiedCount}
 <b>Binance modified:</b>  ${binanceModifyResult.modifiedCount}

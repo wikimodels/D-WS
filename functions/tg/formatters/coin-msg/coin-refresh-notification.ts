@@ -29,17 +29,15 @@ import { UnixToNamedTimeRu } from "../../../utils/time-converter.ts";
 export function formatCoinRefreshNotificationMsg(
   projectName: string,
   className: string,
-  result: { insertResult: InsertResult; deleteResult: DeleteResult }
+  result: InsertResult
 ) {
   const timestamp = UnixToNamedTimeRu(new Date().getTime());
 
   const msg = `
   <b>🈯️ ${projectName}:${className} Coin Refreshment Done</b>
   
-  <i>Procedure renewed the list of Coin-Provider Collection.</i>
-
-  <b>Deleted:</b>  ${result.deleteResult.deletedCount}
-  <b>Inserted:</b>  ${result.insertResult.insertedCount}
+  <i>Procedure renewed the list of Coin-Provider Collection.</i>     
+  <b>Inserted new Coins:</b>  ${result.insertedCount}
   ━━━━━━━━━━━━━    
   🕒 <b>Time:</b> <i>${timestamp}</i>
   `;

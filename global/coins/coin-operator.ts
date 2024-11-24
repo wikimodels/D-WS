@@ -20,6 +20,7 @@ import { designateLinks } from "../utils/designate-links.ts";
 import { CoinsCollections } from "../../models/coin/coins-collections.ts";
 import { filterUpdateData } from "../utils/filter-update-data.ts";
 import { generateCoinsStatistics } from "../utils/generate-coins-statistics.ts";
+import { CoinRepository } from "./coin-repository.ts";
 
 const { MONGO_DB, PROJECT_NAME } = await load();
 
@@ -28,7 +29,9 @@ export class CoinOperator {
   private static coinsRepo = new Map<string, Coin>();
   private static dbClient: MongoClient | null = null;
   private static db: Database | null = null;
+  private static collection: Collection<Coin> | null = null;
   private static readonly dbName = "general";
+  private static readonly collectionName = CoinsCollections.CoinRepo;
   private static readonly MONGO_DB = MONGO_DB;
   private static readonly PROJECT_NAME = PROJECT_NAME;
   private static readonly CLASS_NAME = "CoinOperator";
@@ -73,10 +76,14 @@ export class CoinOperator {
         CoinOperator.dbClient = await CoinOperator.connectWithRetry(); // Connect with retry logic
         CoinOperator.db = CoinOperator.dbClient.database(CoinOperator.dbName);
 
-        // Explicitly call initializeCoinsFromDb after the database is ready
-        await CoinOperator.initializeCoinsFromDb(CoinsCollections.CoinAtWork); // Example method to load coins
+        CoinOperator.collection = CoinOperator.db.collection(
+          this.collectionName
+        );
 
-        CoinOperator.instance = new CoinOperator(); // Create the singleton instance
+        await CoinOperator.initializeCoinsRepoFromDb();
+
+        CoinOperator.instance = new CoinOperator();
+
         console.log(
           `%c${CoinOperator.PROJECT_NAME}:${CoinOperator.CLASS_NAME} ---> initialized...`,
           "color: magenta"
@@ -89,51 +96,75 @@ export class CoinOperator {
     return CoinOperator.instance;
   }
 
-  public static getCollection(collectionName: string): Collection<Coin> {
-    if (!CoinOperator.db) {
-      throw new Error(
-        "CoinOperator --> Database not initialized. Call initializeFromDb() first."
-      );
+  // Method to fetch all coins from the database
+  private static async getAllCoinsFromDb(): Promise<Coin[]> {
+    // Check if the collection is initialized
+    if (!CoinOperator.collection) {
+      const errorMsg = `${this.PROJECT_NAME}:${this.CLASS_NAME} ---> Database collection is not initialized.`;
+      console.error(errorMsg);
+      throw new Error(errorMsg);
     }
-    return CoinOperator.db.collection(collectionName);
-  }
 
-  public static async getAllCoins(collectionName: string): Promise<Coin[]> {
     try {
-      const collection = this.getCollection(collectionName);
-      return await collection.find({}).toArray();
-    } catch (error) {
-      const errorMsg =
-        "CoinOperator:getAllCoins() ---> Failed to insert documents";
+      // Perform the query to fetch all coins from the collection
+      const coins = await CoinOperator.collection.find({}).toArray();
+
+      if (coins.length > 0) {
+        console.log(
+          `%c${this.PROJECT_NAME}:${this.CLASS_NAME} ---> Retrieved ${coins.length} coins from the database.`,
+          DColors.green
+        );
+      } else {
+        console.warn(
+          `%c${this.PROJECT_NAME}:${this.CLASS_NAME} ---> No coins found in the database.`,
+          DColors.yellow
+        );
+      }
+
+      return coins;
+    } catch (error: any) {
+      const errorMsg = `${this.PROJECT_NAME}:${this.CLASS_NAME}:getAllCoinsFromDb ---> Failed to retrieve coins from the database.`;
       console.error(errorMsg, error);
 
-      // Notify about the failed function with context
+      // Notify about the error
       await notifyAboutFailedFunction(
         this.PROJECT_NAME,
         this.CLASS_NAME,
-        "getAllCoins",
+        "getAllCoinsFromDb",
         error
       );
-      // Return a failed InsertResult object
-      throw new Error(errorMsg);
+
+      // Rethrow the error to propagate it further
+      throw new Error(`${errorMsg} Error: ${error.message}`);
     }
   }
 
-  public static async addCoin(
-    collectionName: string,
-    coin: Coin
-  ): Promise<InsertResult> {
+  public static getCoinsFromRepoByCollectionName(collectionName: string) {
+    const coins = Array.from(this.coinsRepo.values());
+    return coins.filter((c) => c.collection === collectionName);
+  }
+
+  public static getAllCoinsFromRepo() {
+    return Array.from(this.coinsRepo.values());
+  }
+
+  public static async addCoin(coin: Coin): Promise<InsertResult> {
+    // Ensure the collection is initialized
+    if (!CoinOperator.collection) {
+      const errorMsg = `${this.PROJECT_NAME}:${this.CLASS_NAME} ---> Database collection is not initialized.`;
+      console.error(errorMsg);
+      throw new Error(errorMsg);
+    }
+
     try {
-      const collection = this.getCollection(collectionName);
-      const res = await collection.insertOne(coin);
+      const res = await CoinOperator.collection.insertOne(coin);
 
       // Extract and convert ObjectIds to strings
       const insertedId = (res as Bson.ObjectId).toString();
 
-      if (collectionName == CoinsCollections.CoinRepo) {
-        this.coinsRepo.clear();
-        await this.initializeCoinsFromDb(CoinsCollections.CoinRepo);
-      }
+      this.coinsRepo.clear();
+      await this.initializeCoinsRepoFromDb();
+
       // Return a successful InsertResult object
       return {
         inserted: insertedId != undefined,
@@ -156,12 +187,14 @@ export class CoinOperator {
     }
   }
 
-  public static async addCoins(
-    collectionName: string,
-    coins: Coin[]
-  ): Promise<InsertResult> {
+  public static async addCoins(coins: Coin[]): Promise<InsertResult> {
+    // Ensure the collection is initialized
+    if (!CoinOperator.collection) {
+      const errorMsg = `${this.PROJECT_NAME}:${this.CLASS_NAME} ---> Database collection is not initialized.`;
+      console.error(errorMsg);
+      throw new Error(errorMsg);
+    }
     try {
-      const collection = this.getCollection(collectionName);
       const batchSize = 50;
       const totalBatches = Math.ceil(coins.length / batchSize);
 
@@ -171,7 +204,7 @@ export class CoinOperator {
         const batch = coins.slice(i * batchSize, (i + 1) * batchSize);
 
         try {
-          const res = await collection.insertMany(batch);
+          const res = await CoinOperator.collection.insertMany(batch);
 
           // Extract and convert ObjectIds to strings
           const insertedIds = Object.values(res.insertedIds).map((id) =>
@@ -196,10 +229,8 @@ export class CoinOperator {
         }
       }
 
-      if (collectionName === CoinsCollections.CoinRepo) {
-        this.coinsRepo.clear();
-        await this.initializeCoinsFromDb(CoinsCollections.CoinRepo);
-      }
+      this.coinsRepo.clear();
+      await this.initializeCoinsRepoFromDb();
 
       return {
         inserted: true,
@@ -223,21 +254,21 @@ export class CoinOperator {
     }
   }
 
-  public static async deleteCoins(
-    collectionName: string,
-    symbols?: string[]
-  ): Promise<DeleteResult> {
+  public static async deleteCoins(symbols?: string[]): Promise<DeleteResult> {
+    // Ensure the collection is initialized
+    if (!CoinOperator.collection) {
+      const errorMsg = `${this.PROJECT_NAME}:${this.CLASS_NAME} ---> Database collection is not initialized.`;
+      console.error(errorMsg);
+      throw new Error(errorMsg);
+    }
     try {
-      const collection = this.getCollection(collectionName);
       const filter =
         symbols && symbols.length > 0 ? { symbol: { $in: symbols } } : {};
 
-      const deletedCount = await collection.deleteMany(filter);
+      const deletedCount = await CoinOperator.collection.deleteMany(filter);
 
-      if (collectionName == CoinsCollections.CoinRepo) {
-        this.coinsRepo.clear();
-        await this.initializeCoinsFromDb(CoinsCollections.CoinRepo);
-      }
+      this.coinsRepo.clear();
+      await this.initializeCoinsRepoFromDb();
 
       return { deleted: deletedCount > 0, deletedCount };
     } catch (error: any) {
@@ -251,22 +282,24 @@ export class CoinOperator {
     }
   }
 
-  public static async updateCoin(
-    collectionName: string,
-    symbol: string,
-    updatedData: Partial<Coin>
-  ): Promise<ModifyResult> {
+  public static async updateCoin(updateData: {
+    symbol: string;
+    propertiesToUpdate: Partial<Coin>;
+  }): Promise<ModifyResult> {
+    // Ensure the collection is initialized
+    if (!CoinOperator.collection) {
+      const errorMsg = `${this.PROJECT_NAME}:${this.CLASS_NAME} ---> Database collection is not initialized.`;
+      console.error(errorMsg);
+      throw new Error(errorMsg);
+    }
     try {
-      const filteredData = filterUpdateData(updatedData);
-      const collection = this.getCollection(collectionName);
-      const filter = { symbol: symbol };
+      const filteredData = filterUpdateData(updateData.propertiesToUpdate);
+      const filter = { symbol: updateData.symbol };
       const update = { $set: filteredData };
-      const res = await collection.updateOne(filter, update);
+      const res = await CoinOperator.collection.updateOne(filter, update);
 
-      if (collectionName == CoinsCollections.CoinRepo) {
-        this.coinsRepo.clear();
-        await this.initializeCoinsFromDb(CoinsCollections.CoinRepo);
-      }
+      this.coinsRepo.clear();
+      await this.initializeCoinsRepoFromDb();
 
       return {
         modified: res.modifiedCount > 0,
@@ -287,102 +320,70 @@ export class CoinOperator {
     }
   }
 
-  public static async updateManyCoins(
-    collectionName: string,
-    coins: Array<{ symbol: string; updatedData: Partial<Coin> }>
+  public static async updateCoins(
+    updateData: Array<{
+      symbol: string;
+      propertiesToUpdate: Partial<Coin>;
+    }>
   ): Promise<ModifyResult> {
+    if (!CoinOperator.collection) {
+      throw new Error(
+        `${this.PROJECT_NAME}:${this.CLASS_NAME} ---> Database collection not initialized. Call initializeInstance() first.`
+      );
+    }
+
+    if (!updateData || updateData.length === 0) {
+      throw new Error(
+        `${this.PROJECT_NAME}:${this.CLASS_NAME} ---> No coins provided for updateCoins.`
+      );
+    }
+
+    let matchedCount = 0;
+    let modifiedCount = 0;
+
     try {
-      const collection = this.getCollection(collectionName);
-      let modifiedCount = 0;
+      // Step 1: Iterate through coins and update individually
+      for (const data of updateData) {
+        const filteredData = filterUpdateData(data.propertiesToUpdate);
 
-      for (const coin of coins) {
-        const filteredData = filterUpdateData(coin.updatedData);
-
-        const { modifiedCount: count } = await collection.updateOne(
-          { symbol: coin.symbol },
-          { $set: filteredData }
+        const result = await CoinOperator.collection.updateOne(
+          { symbol: data.symbol }, // Filter by symbol
+          { $set: filteredData } // Update specified fields
         );
-        modifiedCount += count;
+
+        // Accumulate counts
+        matchedCount += result.matchedCount ?? 0;
+        modifiedCount += result.modifiedCount ?? 0;
       }
 
-      if (collectionName == CoinsCollections.CoinRepo) {
-        this.coinsRepo.clear();
-        await this.initializeCoinsFromDb(CoinsCollections.CoinRepo);
-      }
+      // Step 2: Log the results
+      console.log(
+        `%c${this.PROJECT_NAME}:${this.CLASS_NAME} ---> Update completed. Matched: ${matchedCount}, Modified: ${modifiedCount}`,
+        DColors.green
+      );
+
+      // Step 3: Refresh repository
+      this.coinsRepo.clear();
+      await this.initializeCoinsRepoFromDb();
 
       return {
         modified: modifiedCount > 0,
         modifiedCount,
-      };
+      } as ModifyResult;
     } catch (error: any) {
-      const errorMsg =
-        "CoinOperator:updateManyCoins() ---> Failed to update documents";
+      const errorMsg = `${this.PROJECT_NAME}:${this.CLASS_NAME}:updateCoins ---> Failed to update coins`;
       console.error(errorMsg, error);
 
-      await this.notifyAboutError("updateManyCoins", error);
-
-      throw new Error(`${errorMsg}: ${error.message}`);
-    }
-  }
-
-  public static async moveCoins(
-    sourceCollection: string,
-    targetCollection: string,
-    coins: Coin[]
-  ): Promise<MoveResult> {
-    const source = this.getCollection(sourceCollection);
-    const target = this.getCollection(targetCollection);
-
-    // Initialize a default MoveResult for error handling
-    const result: MoveResult = {
-      deleteCount: 0,
-      insertCount: 0,
-      moved: false,
-    };
-
-    if (coins.length === 0) {
-      console.warn("No documents provided to move.");
-      return result; // No documents to move, return a default result
-    }
-
-    try {
-      // Insert documents into target collection
-      const insertRes = await target.insertMany(coins);
-      const insertCount = insertRes.insertedCount;
-
-      // Delete documents from source collection
-      const deleteCount = await source.deleteMany({
-        symbol: { $in: coins.map((doc) => doc.symbol) },
-      });
-
-      // Set the result based on the outcome
-      result.insertCount = insertCount;
-      result.deleteCount = deleteCount;
-      result.moved =
-        insertCount === deleteCount && deleteCount === coins.length;
-
-      if (
-        sourceCollection == CoinsCollections.CoinRepo ||
-        targetCollection == CoinsCollections.CoinRepo
-      ) {
-        this.coinsRepo.clear();
-        await this.initializeCoinsFromDb(CoinsCollections.CoinRepo);
-      }
-
-      return result;
-    } catch (error) {
-      const errorMsg = "CoinOperator:moveCoins() ---> Error moving documents";
-      console.error(errorMsg, error);
-
-      // Notify about the failed function with context
+      // Notify about the error
       await notifyAboutFailedFunction(
         this.PROJECT_NAME,
         this.CLASS_NAME,
-        "moveCoins",
+        "updateCoins",
         error
       );
-      // Return the default failure result
-      throw new Error(errorMsg);
+
+      // Rethrow the error with additional context
+      throw new Error(`${errorMsg} Error: ${error.message}`);
     }
   }
 
@@ -393,6 +394,30 @@ export class CoinOperator {
   public static assingLinks(coins: Coin[]) {
     coins = designateLinks(coins);
     return coins;
+  }
+
+  // Method to retrieve coins from the database and populate the coins map
+  private static async initializeCoinsRepoFromDb(): Promise<void> {
+    try {
+      const coins = await this.getAllCoinsFromDb();
+      // Populate the coins map with a single Coin per key
+      coins.forEach((coin) => {
+        const key = coin.symbol; // Use symbol as the unique key
+        this.coinsRepo.set(key, coin);
+      });
+
+      console.log(
+        `%c${this.PROJECT_NAME}:${this.CLASS_NAME} ---> coins loaded from DB...`,
+        DColors.green
+      );
+    } catch (error: any) {
+      console.error(
+        `%c${this.PROJECT_NAME}:${this.CLASS_NAME}:initializeCoinsRepoFromDb ---> failed to fetch coins `,
+        DColors.red,
+        error
+      );
+      await this.notifyAboutError("initializeCoinsRepoFromDb", error);
+    }
   }
 
   private static async notifyAboutError(
@@ -407,38 +432,11 @@ export class CoinOperator {
     );
   }
 
-  // Method to retrieve coins from the database and populate the coins map
-  private static async initializeCoinsFromDb(
-    collectionName: string
-  ): Promise<void> {
-    try {
-      const coins = await this.getAllCoins(collectionName);
-      // Populate the coins map with a single Coin per key
-      coins.forEach((coin) => {
-        const key = coin.symbol; // Use symbol as the unique key
-        this.coinsRepo.set(key, coin);
-      });
-
-      console.log(
-        `%c${this.PROJECT_NAME}:${this.CLASS_NAME} ---> coins loaded from DB...`,
-        DColors.green
-      );
-    } catch (error: any) {
-      console.error(
-        `%c${this.PROJECT_NAME}:${this.CLASS_NAME}:initializeCoinsFromDb ---> failed to fetch coins `,
-        DColors.red,
-        error
-      );
-      await this.notifyAboutError("initializeCoinsFromDb", error);
-    }
-  }
-
-  public static getAllWorkingCoinsFromRepo() {
-    return Array.from(this.coinsRepo.values());
-  }
-
   public static async getCoinsRepoStatistics() {
-    const coins = await CoinOperator.getAllCoins(CoinsCollections.CoinRepo);
+    const coins =
+      (await CoinOperator.collection
+        ?.find({ collection: CoinsCollections.CoinRepo })
+        .toArray()) || [];
     return generateCoinsStatistics(coins);
   }
 }
